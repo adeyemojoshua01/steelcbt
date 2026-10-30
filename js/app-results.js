@@ -118,7 +118,7 @@ Object.assign(window.app, {
                         ${['A', 'B', 'C', 'D'].map(opt => `
                             <div class="p-2 rounded border ${d.correctAnswer === opt ? 'bg-green-100 border-green-300' : 'bg-gray-50'} ${d.userAnswer === opt && !d.isCorrect ? 'bg-red-100 border-red-300' : ''}">
                                 <span class="font-bold mr-2">${opt}:</span>
-                                <span>${d.options[opt] || ''}</span>
+                                <span class="whitespace-pre-wrap break-words">${d.options[opt] || ''}</span>
                             </div>
                         `).join('')}
                     </div>`;
@@ -137,20 +137,20 @@ Object.assign(window.app, {
                                     ${d.isCorrect ? 'Correct' : 'Incorrect'}
                                 </span>
                             </div>
-                            <p class="text-gray-700 mb-4 bg-gray-50 p-4 rounded">${d.question}</p>
+                            <p class="text-gray-700 mb-4 bg-gray-50 p-4 rounded whitespace-pre-wrap break-words">${d.question}</p>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div class="${!d.isCorrect ? 'bg-red-50 p-3 rounded border border-red-200' : ''}">
                                     <div class="text-sm text-gray-500 mb-1">Your Answer:</div>
                                     ${(d.userAnswer && String(d.userAnswer).startsWith('data:image'))
                                         ? `<img src="${d.userAnswer}" class="max-h-60 rounded border mt-2 object-contain shadow-sm" alt="Uploaded Answer">`
-                                        : `<div class="font-bold ${d.isCorrect ? 'text-green-700' : 'text-red-700'}">${d.userAnswer || 'Not Answered'}</div>`
+                                        : `<div class="font-bold whitespace-pre-wrap break-words ${d.isCorrect ? 'text-green-700' : 'text-red-700'}">${d.userAnswer || 'Not Answered'}</div>`
                                     }
                                 </div>
                                 ${(!d.isCorrect || d.questionType === 'theory') ? `
                                     <div class="bg-green-50 p-3 rounded border border-green-200">
                                         <div class="text-sm text-gray-500 mb-1">${d.questionType === 'theory' ? 'AI Result' : 'Correct Answer'}:</div>
-                                        <div class="font-bold text-green-700">${d.correctAnswer}</div>
+                                        <div class="font-bold text-green-700 whitespace-pre-wrap break-words">${d.correctAnswer}</div>
                                     </div>
                                 ` : ''}
                             </div>
@@ -160,7 +160,7 @@ Object.assign(window.app, {
                             ${d.explanation ? `
                                 <div class="mt-4 bg-blue-50 p-3 rounded border border-blue-200">
                                     <div class="text-sm text-blue-600 font-bold mb-1">${d.questionType === 'theory' ? 'Model Answer / Explanation:' : 'Explanation:'}</div>
-                                    <p class="text-sm text-gray-700 whitespace-pre-wrap">${d.explanation}</p>
+                                    <p class="text-sm text-gray-700 whitespace-pre-wrap break-words">${d.explanation}</p>
                                 </div>
                             ` : ''}
 
