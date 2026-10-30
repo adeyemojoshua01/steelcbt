@@ -67,7 +67,7 @@ header.bg-green-700 {
 
 /* ---------- 5. TEAL FAMILY (brand / study / correct) ---------- */
 .bg-green-50   { background-color: rgba(20,184,166,.10) !important; }
-.bg-green-100  { background-color: rgba(20,184,166,.16) !important; }
+.bg-green-100  { background-color: rgba(20,184,166,.55) !important; }
 .bg-green-600  { background-color: var(--teal-700) !important; }
 .bg-green-700  { background-color: var(--teal-800) !important; }
 .bg-green-800  { background-color: var(--teal-800) !important; }
@@ -83,7 +83,7 @@ header.bg-green-700 {
 
 /* ---------- 6. AMBER FAMILY (CTAs / current / insight) ---------- */
 .bg-blue-50  { background-color: rgba(251,191,36,.10) !important; }
-.bg-blue-100 { background-color: rgba(251,191,36,.16) !important; }
+.bg-blue-100 { background-color: rgba(251,191,36,.55) !important; }
 .bg-blue-600 { background: linear-gradient(135deg, var(--amber-500), var(--amber-400)) !important; }
 .bg-blue-600, .bg-blue-600 * { color: var(--on-amber) !important; }
 .bg-blue-700 { background: var(--amber-600) !important; }
@@ -103,7 +103,7 @@ header.bg-green-700 {
 
 /* ---------- 8. ROSE FAMILY (danger / incorrect) ---------- */
 .bg-red-50  { background-color: rgba(244,63,94,.10) !important; }
-.bg-red-100 { background-color: rgba(244,63,94,.18) !important; }
+.bg-red-100 { background-color: rgba(244,63,94,.55) !important; }
 .bg-red-600 { background-color: var(--rose-600) !important; }
 .bg-red-700 { background-color: var(--rose-700) !important; }
 .text-red-500, .text-red-600, .text-red-700, .text-red-800 { color: var(--rose-400) !important; }
@@ -111,7 +111,7 @@ header.bg-green-700 {
 .border-red-300 { border-color: rgba(244,63,94,.50) !important; }
 
 /* ---------- 9. WARNING ---------- */
-.bg-yellow-100  { background-color: rgba(251,191,36,.14) !important; }
+.bg-yellow-100  { background-color: rgba(251,191,36,.55) !important; }
 .text-yellow-800 { color: var(--amber-300) !important; }
 .border-yellow-300 { border-color: rgba(251,191,36,.50) !important; }
 
