@@ -126,7 +126,7 @@ Object.assign(window.app, {
                         <p class="font-bold text-green-800">Marks Awarded: ${alreadyGraded.score} / ${q.maxMarks}</p>
                         <div class="mt-3 pt-3 border-t border-green-200">
                             <p class="text-xs text-green-600 font-bold mb-1">Your Submitted Answer:</p>
-                            <p class="text-sm text-gray-700 bg-white p-2 rounded mb-3 whitespace-pre-wrap break-words">${userAnswer || 'No text provided.'}</p>
+                            ${(userAnswer && String(userAnswer).startsWith('data:image'))     ? `<img src="${userAnswer}" class="max-h-60 rounded border mb-3 object-contain shadow-sm" alt="Uploaded Answer">`     : `<p class="text-sm text-gray-700 bg-white p-2 rounded mb-3 whitespace-pre-wrap break-words">${userAnswer || 'No text provided.'}</p>` }
                         </div>
                         <div class="p-3 bg-white rounded border border-green-200">
                             <p class="text-xs text-green-600 font-bold mb-1">Explanation / Model Answer:</p>
