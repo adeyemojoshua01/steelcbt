@@ -1,4 +1,6 @@
-// js/image-viewer.js
+// ============================================================
+// IMAGE VIEWER MODULE
+// ============================================================
 
 function compressImage(file, maxWidth, maxHeight, quality) {
     return new Promise((resolve, reject) => {
@@ -36,12 +38,19 @@ function compressImage(file, maxWidth, maxHeight, quality) {
     });
 }
 
-const imageViewer = {
+window.imageViewer = {
     images: [],
     scale: 1,
-    init: function() { this.setupEventListeners(); },
-    setupEventListeners: function() {},
-    open: function(images, title) {
+
+    init: function () {
+        this.setupEventListeners();
+    },
+
+    setupEventListeners: function () {
+        // No admin upload areas – image viewing only
+    },
+
+    open: function (images, title) {
         this.images = images || [];
         const modal = document.getElementById('image-modal');
         document.getElementById('image-modal-title').textContent = title || 'Reference Images';
@@ -55,48 +64,71 @@ const imageViewer = {
             document.getElementById('no-images-message').classList.add('hidden');
             this.renderGallery();
         }
+
         modal.classList.remove('hidden');
     },
-    close: function() {
+
+    close: function () {
         document.getElementById('image-modal').classList.add('hidden');
         this.images = [];
     },
-    renderGallery: function() {
+
+    renderGallery: function () {
         const gallery = document.getElementById('image-gallery');
         gallery.innerHTML = '';
+
         this.images.forEach((image) => {
             const item = document.createElement('div');
             item.className = 'image-item';
             item.onclick = () => this.viewFullSize(image.data);
+
             const img = document.createElement('img');
             img.src = image.data;
             img.alt = image.filename;
+
             const filename = document.createElement('div');
             filename.className = 'filename';
             filename.textContent = image.filename;
+
             item.appendChild(img);
             item.appendChild(filename);
             gallery.appendChild(item);
         });
     },
-    viewFullSize: function(imageData) {
+
+    viewFullSize: function (imageData) {
         const fullscreenModal = document.createElement('div');
         fullscreenModal.className = 'fixed inset-0 bg-black/90 flex items-center justify-center z-[60]';
         fullscreenModal.onclick = () => fullscreenModal.remove();
+
         const img = document.createElement('img');
         img.src = imageData;
         img.className = 'max-h-[90vh] max-w-[90vw] object-contain';
+
         fullscreenModal.appendChild(img);
         document.body.appendChild(fullscreenModal);
     },
-    zoomIn: function() { this.scale += 0.1; this.applyZoom(); },
-    zoomOut: function() { if (this.scale > 0.3) { this.scale -= 0.1; this.applyZoom(); } },
-    applyZoom: function() {
-        document.querySelectorAll('.image-item img').forEach(img => {
+
+    zoomIn: function () {
+        this.scale += 0.1;
+        this.applyZoom();
+    },
+
+    zoomOut: function () {
+        if (this.scale > 0.3) {
+            this.scale -= 0.1;
+            this.applyZoom();
+        }
+    },
+
+    applyZoom: function () {
+        const images = document.querySelectorAll('.image-item img');
+        images.forEach(img => {
             img.style.transform = `scale(${this.scale})`;
         });
     },
-    downloadAll: function() {
+
+    downloadAll: function () {
         this.images.forEach((image, index) => {
             const link = document.createElement('a');
             link.href = image.data;
