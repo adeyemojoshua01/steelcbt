@@ -63,14 +63,14 @@ Marks: 10
 Explanation: A sample space, often denoted by the symbol S or Ω, is the fundamental foundation of probability theory. It is defined as the set of all possible, distinct outcomes that can result from a random experiment or procedure. For example, when tossing a single fair coin, the sample space consists of exactly two possibilities: {Heads, Tails}. Another example is rolling a standard six-sided die, where the sample space is {1, 2, 3, 4, 5, 6}. It is important to note that the sample space must be mutually exclusive and collectively exhaustive, meaning every possible outcome is listed, and no two outcomes can happen at the same time.
 
 Type: MCQ
-Q003: Solve the system:<br>\( \begin{cases} 2x + 3y = 8 \\ x - y = -1 \end{cases} \)<br><br>Which values of \((x,y)\) satisfy both equations?
-Option: A: \( (1, 2) \)
-Option: B: \( (2, 1) \)<br><em>Check by substitution</em>
-Option: C: \( (-1, -2) \)
-Option: D: \( (2, -1) \)
-Correct: A
-Explanation: Add the second equation to the first (scaled): from \(x - y = -1\) we get \(x = y - 1\).
-Substituting into \(2x + 3y = 8\) gives \(2(y-1) + 3y = 8 \Rightarrow 5y = 10 \Rightarrow y = 2\).
-Then \(x = 2 - 1 = 1\), so the solution is \((1, 2)\).  ← physical newlines are fine here
+Q003: Solve the system:<br>\\( \\begin{cases} 2x + 3y = 8 \\ x - y = -1 \\end{cases} \\)<br><br>Which values of \\((x,y)\\) satisfy both equations?
+Option: A: \\( (1, 2) \\)
+Option: B: \\( (2, 1) \\)<br><em>Check by substitution</em>
+Option: C: \\( (-1, -2) \\)
+Option: D: \\( (2, -1) \\)
+Answer: A
+Explanation: Add the second equation to the first (scaled): from \\(x - y = -1\\) we get \\(x = y - 1\\).
+Substituting into \\(2x + 3y = 8\\) gives \\(2(y-1) + 3y = 8 \\Rightarrow 5y = 10 \\Rightarrow y = 2\\).
+Then \\(x = 2 - 1 = 1\\), so the solution is \\((1, 2)\\).  ← physical newlines are fine here
 
 `);
