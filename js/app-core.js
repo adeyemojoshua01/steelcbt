@@ -1,5 +1,7 @@
 // ============================================================
-// APP CORE — state, data loading, landing, login UI
+// APP CORE
+// State, persistence, resume-exam, notifications, landing,
+// study materials, candidate login, header, MathJax patcher.
 // ============================================================
 
 window.app = {
@@ -16,16 +18,15 @@ window.app = {
         mode: 'landing',
         results: [],
         images: {},
-        examMode: null,          // 'practice' or 'study'
+        examMode: null,
         answerRevealed: {},
         lastResults: null,
         refreshLocked: true
     },
 
-    // ============================================================
+    // --------------------------------------------------------
     // INITIALIZATION
-    // ============================================================
-
+    // --------------------------------------------------------
     init: function () {
         this.loadData();
         this.loadResults();
@@ -33,7 +34,6 @@ window.app = {
         imageViewer.init();
         this.setupMathJaxPatch();
 
-        // Resume prompt short-circuits the normal landing render
         if (this.checkForSavedExam()) return;
 
         this.showLanding();
@@ -53,36 +53,24 @@ window.app = {
     },
 
     loadImages: function () {
-        const storedImages = localStorage.getItem('cbt_images');
-        if (storedImages) {
-            try {
-                this.data.images = JSON.parse(storedImages);
-            } catch (e) {
-                this.data.images = {};
-            }
+        const stored = localStorage.getItem('cbt_images');
+        if (stored) {
+            try { this.data.images = JSON.parse(stored); }
+            catch (e) { this.data.images = {}; }
         }
     },
 
     loadResults: function () {
-        const storedResults = localStorage.getItem('cbt_results');
-        if (storedResults) {
-            try {
-                this.data.results = JSON.parse(storedResults);
-            } catch (e) {}
+        const stored = localStorage.getItem('cbt_results');
+        if (stored) {
+            try { this.data.results = JSON.parse(stored); }
+            catch (e) { /* leave empty */ }
         }
     },
 
-    saveSubjects: function () {
-        localStorage.setItem('cbt_subjects', JSON.stringify(this.data.subjects));
-    },
-
-    saveResults: function () {
-        localStorage.setItem('cbt_results', JSON.stringify(this.data.results));
-    },
-
-    saveImages: function () {
-        localStorage.setItem('cbt_images', JSON.stringify(this.data.images));
-    },
+    saveSubjects: function () { localStorage.setItem('cbt_subjects', JSON.stringify(this.data.subjects)); },
+    saveResults:  function () { localStorage.setItem('cbt_results',  JSON.stringify(this.data.results));  },
+    saveImages:   function () { localStorage.setItem('cbt_images',   JSON.stringify(this.data.images));   },
 
     createSubjectInternal: function (name, duration, questions = [], id = null) {
         const newId = id || 'subj_' + Date.now();
@@ -99,19 +87,136 @@ window.app = {
         return newId;
     },
 
-    // ============================================================
-    // NOTIFICATIONS
-    // ============================================================
+    // --------------------------------------------------------
+    // EXAM STATE PERSISTENCE (for resume-after-refresh)
+    // --------------------------------------------------------
+    saveExamState: function () {
+        if (this.data.mode !== 'test') return;
+        try {
+            localStorage.setItem('cbt_exam_state', JSON.stringify({
+                questions:        this.data.questions,
+                userAnswers:      this.data.userAnswers,
+                answerRevealed:   this.data.answerRevealed,
+                currentIndex:     this.data.currentQuestionIndex,
+                endTime:          this.data.endTime || null,
+                examMode:         this.data.examMode,
+                candidateName:    this.data.candidateName,
+                currentSubjectId: this.data.currentSubjectId,
+                examDuration:     this.data.examDuration,
+                timeLeft:         this.data.timeLeft
+            }));
+        } catch (e) { console.warn('saveExamState failed:', e); }
+    },
 
+    clearExamState: function () {
+        localStorage.removeItem('cbt_exam_state');
+    },
+
+    checkForSavedExam: function () {
+        const raw = localStorage.getItem('cbt_exam_state');
+        if (!raw) return false;
+
+        let state;
+        try { state = JSON.parse(raw); }
+        catch { this.clearExamState(); return false; }
+
+        if (state.examMode === 'practice' && state.endTime) {
+            const remaining = Math.round((state.endTime - Date.now()) / 1000);
+            if (remaining <= 0) { this.clearExamState(); return false; }
+            state.timeLeft = remaining;
+        }
+
+        this._savedExamState = state;
+        this.showResumePrompt(state);
+        return true;
+    },
+
+    showResumePrompt: function (state) {
+        this.data.mode = 'resume-prompt';
+        this.updateHeader();
+
+        const subjectName = this.data.subjects[state.currentSubjectId]?.name || 'Unknown';
+        const answered = Object.keys(state.userAnswers || {}).filter(k =>
+            state.userAnswers[k] !== undefined && state.userAnswers[k] !== ''
+        ).length;
+
+        document.getElementById('app-container').innerHTML = `
+            <div class="flex items-center justify-center h-full">
+                <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-clock-rotate-left text-5xl text-blue-600 mb-3"></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Unfinished Exam Found</h2>
+                        <p class="text-gray-500 mt-1">Would you like to resume?</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded mb-6 space-y-1 text-sm">
+                        <p><span class="text-gray-500">Candidate:</span> <strong>${state.candidateName || '—'}</strong></p>
+                        <p><span class="text-gray-500">Subject:</span> <strong>${subjectName}</strong></p>
+                        <p><span class="text-gray-500">Mode:</span> <strong>${state.examMode}</strong></p>
+                        <p><span class="text-gray-500">Progress:</span> <strong>${answered} / ${state.questions.length} answered</strong></p>
+                    </div>
+                    <div class="space-y-3">
+                        <button onclick="event.preventDefault(); app.resumeSavedExam()"
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">
+                            <i class="fas fa-play mr-2"></i>Resume Exam
+                        </button>
+                        <button onclick="event.preventDefault(); app.discardSavedExam()"
+                                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg">
+                            <i class="fas fa-trash mr-2"></i>Discard & Start Fresh
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    },
+
+    resumeSavedExam: function () {
+        const state = this._savedExamState;
+        if (!state) { this.showLanding(); return; }
+
+        this.data.questions            = state.questions;
+        this.data.userAnswers          = state.userAnswers || {};
+        this.data.answerRevealed       = state.answerRevealed || {};
+        this.data.currentQuestionIndex = state.currentIndex || 0;
+        this.data.examMode             = state.examMode;
+        this.data.candidateName        = state.candidateName || '';
+        this.data.currentSubjectId     = state.currentSubjectId;
+        this.data.examDuration         = state.examDuration || 30;
+        this.data.mode                 = 'test';
+        this.data.answerRevealed       = state.answerRevealed || {};
+
+        if (state.examMode === 'practice' && state.endTime) {
+            this.data.timeLeft = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
+            if (this.data.timeLeft <= 0) {
+                this.clearExamState();
+                this.submitTest();
+                return;
+            }
+            this.startTimer();
+        } else {
+            this.data.timeLeft = 0;
+        }
+
+        this._savedExamState = null;
+        this.showTestInterface();
+    },
+
+    discardSavedExam: function () {
+        this.clearExamState();
+        this._savedExamState = null;
+        this.showLanding();
+    },
+
+    // --------------------------------------------------------
+    // NOTIFICATIONS
+    // --------------------------------------------------------
     showNotification: function (message, type = 'info') {
         const existing = document.querySelector('.cbt-notification');
         if (existing) existing.remove();
 
         const colors = {
-            info: 'bg-blue-100 text-blue-800 border-blue-300',
+            info:    'bg-blue-100 text-blue-800 border-blue-300',
             success: 'bg-green-100 text-green-800 border-green-300',
             warning: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-            error: 'bg-red-100 text-red-800 border-red-300'
+            error:   'bg-red-100 text-red-800 border-red-300'
         };
 
         const notification = document.createElement('div');
@@ -123,20 +228,14 @@ window.app = {
                 <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times"></i>
                 </button>
-            </div>
-        `;
-
+            </div>`;
         document.body.appendChild(notification);
-
-        setTimeout(() => {
-            if (notification.parentNode) notification.remove();
-        }, 3000);
+        setTimeout(() => { if (notification.parentNode) notification.remove(); }, 3000);
     },
 
-    // ============================================================
-    // LANDING PAGE
-    // ============================================================
-
+    // --------------------------------------------------------
+    // LANDING
+    // --------------------------------------------------------
     showLanding: function () {
         this.stopTimer();
         this.data.mode = 'landing';
@@ -155,7 +254,6 @@ window.app = {
                     <h2 class="text-3xl font-bold text-gray-800 mb-2">Welcome to the CBT Portal</h2>
                     <p class="text-gray-600">Select your role to continue</p>
                 </div>
-
                 ${subjectsWithNotes.length > 0 ? `
                 <div class="w-full max-w-2xl mb-6">
                     <h3 class="text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -164,20 +262,17 @@ window.app = {
                     </h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         ${subjectsWithNotes.map(subj => {
-                            const noteCount = subj.notes ? Object.keys(subj.notes).filter(t => subj.notes[t]?.trim()).length : 0;
+                            const noteCount  = subj.notes ? Object.keys(subj.notes).filter(t => subj.notes[t]?.trim()).length : 0;
                             const imageCount = subj.topicImages ? Object.values(subj.topicImages).flat().length : 0;
                             return `
                                 <div onclick="event.preventDefault(); app.showSubjectNotes('${subj.id}')" class="note-card cursor-pointer">
                                     <i class="fas fa-book"></i>
                                     <h4 class="font-bold">${subj.name}</h4>
                                     <p class="text-sm opacity-90">${noteCount} topics with notes, ${imageCount} topic images</p>
-                                </div>
-                            `;
+                                </div>`;
                         }).join('')}
                     </div>
-                </div>
-                ` : ''}
-
+                </div>` : ''}
                 <div class="grid grid-cols-1 md:grid-cols-1 gap-6 w-full max-w-md">
                     <button onclick="event.preventDefault(); app.showCandidateOptions()" class="group bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition border text-center">
                         <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200">
@@ -190,10 +285,9 @@ window.app = {
             </div>`;
     },
 
-    // ============================================================
+    // --------------------------------------------------------
     // STUDY MATERIALS
-    // ============================================================
-
+    // --------------------------------------------------------
     showSubjectNotes: function (subjectId) {
         const subj = this.data.subjects[subjectId];
         if (!subj) return;
@@ -219,10 +313,9 @@ window.app = {
                     </button>
                     <h2 class="text-2xl font-bold text-gray-800">${subj.name} - Study Materials</h2>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow overflow-y-auto pb-4">
                     ${topicsWithMaterials.map(t => {
-                        const hasNote = subj.notes && subj.notes[t.id] && subj.notes[t.id].trim() !== '';
+                        const hasNote   = subj.notes && subj.notes[t.id] && subj.notes[t.id].trim() !== '';
                         const hasImages = subj.topicImages && subj.topicImages[t.id] && subj.topicImages[t.id].length > 0;
                         return `
                             <div class="bg-white p-6 rounded-lg shadow-md border hover:shadow-lg transition">
@@ -236,20 +329,16 @@ window.app = {
                                     ${hasNote ? `
                                         <button onclick="event.preventDefault(); app.viewTopicNote('${subjectId}', '${t.id}', '${t.name}')" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded text-sm font-bold">
                                             <i class="fas fa-book-open mr-1"></i> Read Notes
-                                        </button>
-                                    ` : ''}
+                                        </button>` : ''}
                                     ${hasImages ? `
                                         <button onclick="event.preventDefault(); app.viewTopicImages('${subjectId}', '${t.id}')" class="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded text-sm font-bold">
                                             <i class="fas fa-images mr-1"></i> View Images (${subj.topicImages[t.id].length})
-                                        </button>
-                                    ` : ''}
+                                        </button>` : ''}
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                     }).join('')}
                 </div>
-            </div>
-        `;
+            </div>`;
     },
 
     viewTopicNote: function (subjectId, topicId, topicName) {
@@ -258,7 +347,6 @@ window.app = {
             this.showNotification('No notes available for this topic', 'info');
             return;
         }
-
         document.getElementById('note-viewer-title').textContent = `Notes: ${topicName}`;
         document.getElementById('note-viewer-content').innerHTML = subj.notes[topicId];
         document.getElementById('note-viewer-modal').classList.remove('hidden');
@@ -272,8 +360,9 @@ window.app = {
             return;
         }
         const images = subj.topicImages[topicId];
-        const modal = document.getElementById('topic-image-modal');
-        document.getElementById('topic-image-modal-title').textContent = `Images - ${subj.topics.find(t => t.id === topicId)?.name || 'Topic'}`;
+        const modal  = document.getElementById('topic-image-modal');
+        document.getElementById('topic-image-modal-title').textContent =
+            `Images - ${subj.topics.find(t => t.id === topicId)?.name || 'Topic'}`;
         const gallery = document.getElementById('topic-image-gallery');
         gallery.innerHTML = '';
         images.forEach(img => {
@@ -302,10 +391,9 @@ window.app = {
         modal.classList.remove('hidden');
     },
 
-    // ============================================================
-    // CANDIDATE OPTIONS & LOGIN
-    // ============================================================
-
+    // --------------------------------------------------------
+    // CANDIDATE FLOW
+    // --------------------------------------------------------
     showCandidateOptions: function () {
         this.data.mode = 'candidate-options';
         this.updateHeader();
@@ -315,30 +403,23 @@ window.app = {
                 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
                     <i class="fas fa-user-graduate text-5xl text-blue-600 mb-4"></i>
                     <h2 class="text-2xl font-bold text-gray-800 mb-6">Select Exam Mode</h2>
-
                     <div class="space-y-4">
                         <button onclick="event.preventDefault(); app.showCandidateLogin('practice')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition flex items-center justify-center gap-3">
-                            <i class="fas fa-clock"></i>
-                            <span>Practice Mode (Timed)</span>
+                            <i class="fas fa-clock"></i><span>Practice Mode (Timed)</span>
                         </button>
-
                         <button onclick="event.preventDefault(); app.showCandidateLogin('study')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg transition flex items-center justify-center gap-3">
-                            <i class="fas fa-book-open"></i>
-                            <span>Study Mode (Learn with Explanations)</span>
+                            <i class="fas fa-book-open"></i><span>Study Mode (Learn with Explanations)</span>
                         </button>
                     </div>
-
                     <div class="mt-6 text-sm text-gray-500">
                         <p><i class="fas fa-info-circle mr-1"></i> Practice: Timed exam, results at the end</p>
                         <p class="mt-1"><i class="fas fa-info-circle mr-1"></i> Study: Click on your answer to see correct answer & explanation</p>
                     </div>
-
                     <button onclick="event.preventDefault(); app.showLanding()" class="mt-6 text-gray-500 hover:text-gray-700">
                         <i class="fas fa-arrow-left mr-1"></i> Back
                     </button>
                 </div>
-            </div>
-        `;
+            </div>`;
     },
 
     showCandidateLogin: function (mode) {
@@ -360,8 +441,7 @@ window.app = {
                        placeholder="Leave empty to use subject default (${subjects[0]?.duration || 30} min)"
                        min="1" max="999" step="1">
                 <p class="text-xs text-gray-500 mt-1">Enter any number between 1 and 999 minutes</p>
-            </div>
-        ` : '';
+            </div>` : '';
 
         document.getElementById('app-container').innerHTML = `
             <div class="flex flex-col items-center justify-center min-h-full py-6 px-2">
@@ -372,14 +452,12 @@ window.app = {
                         </button>
                         <h2 class="text-2xl font-bold text-center text-gray-800 flex-grow">Candidate Login</h2>
                     </div>
-
                     <div class="mb-4 text-center">
                         <span class="inline-block px-4 py-1 rounded-full text-sm font-bold ${mode === 'practice' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
                             <i class="fas ${mode === 'practice' ? 'fa-clock' : 'fa-book-open'} mr-1"></i>
                             ${mode === 'practice' ? 'Practice Mode (Timed)' : 'Study Mode (Click answers to reveal)'}
                         </span>
                     </div>
-
                     <form id="candidate-login-form">
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2 font-medium">Full Name</label>
@@ -391,9 +469,7 @@ window.app = {
                                 ${subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
                             </select>
                         </div>
-
                         ${customDurationHtml}
-
                         <div id="candidate-topics-container" class="mb-6"></div>
                         <div class="bg-blue-50 p-4 rounded mb-6 text-sm text-blue-800">
                             <p class="font-bold mb-1"><i class="fas fa-info-circle"></i> Instructions:</p>
@@ -431,14 +507,12 @@ window.app = {
 
         let topicsHtml = `
             <p class="mb-2 text-sm font-bold text-gray-700">Select Topics & Choose Number of Questions</p>
-            <div class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border p-3 rounded bg-white">
-        `;
+            <div class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border p-3 rounded bg-white">`;
 
         subj.topics.forEach(topic => {
             const questionCount = subj.questions.filter(q => q.topicId === topic.id).length;
-            const hasNote = subj.notes && subj.notes[topic.id] && subj.notes[topic.id].trim() !== '';
+            const hasNote   = subj.notes && subj.notes[topic.id] && subj.notes[topic.id].trim() !== '';
             const hasImages = subj.topicImages && subj.topicImages[topic.id] && subj.topicImages[topic.id].length > 0;
-
             topicsHtml += `
                 <div class="flex flex-col gap-2 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -451,19 +525,13 @@ window.app = {
                         <span class="text-gray-600"><i class="fas fa-database"></i> Available: <strong class="text-green-700">${questionCount}</strong> questions</span>
                         <div class="flex items-center gap-2">
                             <label class="text-gray-600">Take:</label>
-                            <input type="number"
-                                   class="topic-quantity w-20 border rounded px-2 py-1 text-center text-sm"
-                                   data-topic-id="${topic.id}"
-                                   min="0"
-                                   max="${questionCount}"
-                                   value="${questionCount}"
-                                   step="1"
-                                   ${questionCount === 0 ? 'disabled' : ''}>
+                            <input type="number" class="topic-quantity w-20 border rounded px-2 py-1 text-center text-sm"
+                                   data-topic-id="${topic.id}" min="0" max="${questionCount}"
+                                   value="${questionCount}" step="1" ${questionCount === 0 ? 'disabled' : ''}>
                             <span class="text-xs text-gray-500">questions</span>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         });
         topicsHtml += `</div>`;
         container.innerHTML = topicsHtml;
@@ -471,49 +539,153 @@ window.app = {
         document.querySelectorAll('.topic-checkbox').forEach(checkbox => {
             const topicId = checkbox.value;
             const qtyInput = document.querySelector(`.topic-quantity[data-topic-id="${topicId}"]`);
-            if (qtyInput) {
-                const updateQtyState = () => {
-                    if (checkbox.checked) {
-                        qtyInput.disabled = false;
-                        let currentVal = parseInt(qtyInput.value);
-                        let maxVal = parseInt(qtyInput.max);
-                        if (isNaN(currentVal) || currentVal < 1) qtyInput.value = 1;
-                        if (currentVal > maxVal) qtyInput.value = maxVal;
-                    } else {
-                        qtyInput.disabled = true;
-                        qtyInput.value = 0;
-                    }
-                };
-                checkbox.addEventListener('change', updateQtyState);
-                qtyInput.addEventListener('input', function () {
-                    let val = parseInt(this.value);
-                    let maxVal = parseInt(this.max);
-                    if (isNaN(val)) val = 1;
-                    if (val < 0) val = 0;
-                    if (val > maxVal) val = maxVal;
-                    this.value = val;
-                    if (val === 0 && checkbox.checked) {
-                        checkbox.checked = false;
-                        this.disabled = true;
-                    } else if (val > 0 && !checkbox.checked) {
-                        checkbox.checked = true;
-                        this.disabled = false;
-                    }
-                });
-                updateQtyState();
-            }
+            if (!qtyInput) return;
+            const updateQtyState = () => {
+                if (checkbox.checked) {
+                    qtyInput.disabled = false;
+                    let currentVal = parseInt(qtyInput.value);
+                    const maxVal = parseInt(qtyInput.max);
+                    if (isNaN(currentVal) || currentVal < 1) qtyInput.value = 1;
+                    if (currentVal > maxVal) qtyInput.value = maxVal;
+                } else {
+                    qtyInput.disabled = true;
+                    qtyInput.value = 0;
+                }
+            };
+            checkbox.addEventListener('change', updateQtyState);
+            qtyInput.addEventListener('input', function () {
+                let val = parseInt(this.value);
+                const maxVal = parseInt(this.max);
+                if (isNaN(val)) val = 1;
+                if (val < 0) val = 0;
+                if (val > maxVal) val = maxVal;
+                this.value = val;
+                if (val === 0 && checkbox.checked) {
+                    checkbox.checked = false;
+                    this.disabled = true;
+                } else if (val > 0 && !checkbox.checked) {
+                    checkbox.checked = true;
+                    this.disabled = false;
+                }
+            });
+            updateQtyState();
         });
     },
 
-    // ============================================================
-    // HEADER
-    // ============================================================
+    startTestPrep: function () {
+        const nameInput    = document.getElementById('candidate-name');
+        const subjectInput = document.getElementById('exam-subject');
+
+        if (nameInput) this.data.candidateName = nameInput.value;
+        if (!subjectInput) { this.showNotification('No subject selected.', 'error'); return; }
+
+        const subject = this.data.subjects[subjectInput.value];
+        this.data.currentSubjectId = subjectInput.value;
+
+        let customDurationMinutes = null;
+        if (this.data.examMode === 'practice') {
+            const customDurationInput = document.getElementById('custom-duration-input');
+            if (customDurationInput && customDurationInput.value) {
+                const parsed = parseInt(customDurationInput.value, 10);
+                if (!isNaN(parsed) && parsed > 0 && parsed <= 999) {
+                    customDurationMinutes = parsed;
+                }
+            }
+        }
+
+        const selectedTopics = [];
+        const topicQuantityMap = {};
+        document.querySelectorAll('input[name="exam-topic"]:checked').forEach(cb => {
+            const topicId = cb.value;
+            const qtyInput = document.querySelector(`.topic-quantity[data-topic-id="${topicId}"]`);
+            let qty = qtyInput ? parseInt(qtyInput.value) : 0;
+            if (isNaN(qty) || qty < 0) qty = 0;
+            if (qty > 0) {
+                selectedTopics.push(topicId);
+                topicQuantityMap[topicId] = qty;
+            }
+        });
+
+        let questionsToUse = [];
+        if (selectedTopics.length === 0) {
+            questionsToUse = [...subject.questions];
+        } else {
+            for (let topicId of selectedTopics) {
+                const topicQuestions = subject.questions.filter(q => q.topicId === topicId);
+                const requested = topicQuantityMap[topicId];
+                if (topicQuestions.length === 0) continue;
+                const numberOfQuestions = Math.min(requested, topicQuestions.length);
+                if (numberOfQuestions <= 0) continue;
+                const shuffled = [...topicQuestions];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                questionsToUse.push(...shuffled.slice(0, numberOfQuestions));
+            }
+        }
+
+        if (questionsToUse.length === 0) {
+            this.showNotification("No questions available.", "error");
+            return;
+        }
+
+        for (let i = questionsToUse.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [questionsToUse[i], questionsToUse[j]] = [questionsToUse[j], questionsToUse[i]];
+        }
+
+        this.data.questions = questionsToUse;
+        this.data.examDuration = (this.data.examMode === 'practice')
+            ? (customDurationMinutes !== null ? customDurationMinutes : subject.duration)
+            : this.data.examDuration;
+
+        if (this.data.questions.length === 0) {
+            this.showNotification("No questions set.", "error");
+            return;
+        }
+
+        this.data.currentQuestionIndex = 0;
+        this.data.userAnswers = {};
+        this.data.answerRevealed = {};
+        this.clearExamState();
+        this.data.endTime = null;
+
+        if (this.data.examMode === 'practice') {
+            this.data.timeLeft = this.data.examDuration * 60;
+            this.startTimer();           // defined in app-exam.js
+        } else {
+            this.data.timeLeft = 0;
+        }
+
+        this.data.refreshLocked = true;
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+
+        this.showTestInterface();        // defined in app-exam.js
+    },
+
+    // --------------------------------------------------------
+    // IMAGE MODAL + HEADER + MATHJAX
+    // --------------------------------------------------------
+    showImageModal: function () {
+        const subjectId = this.data.currentSubjectId;
+        const images = this.data.images[subjectId] || [];
+        if (images.length > 0) {
+            imageViewer.open(images, `Reference Images - ${this.data.subjects[subjectId]?.name || 'Subject'}`);
+        } else {
+            const modal = document.getElementById('image-modal');
+            document.getElementById('image-viewer-container').classList.add('hidden');
+            document.getElementById('no-images-message').classList.remove('hidden');
+            modal.classList.remove('hidden');
+        }
+    },
 
     updateHeader: function () {
         const headerActions = document.getElementById('header-actions');
 
         if (this.data.mode === 'test') {
-            const subjName = this.data.subjects[this.data.currentSubjectId]?.name || '';
+            const subjName  = this.data.subjects[this.data.currentSubjectId]?.name || '';
             const hasImages = this.data.images?.[this.data.currentSubjectId]?.length > 0;
 
             headerActions.innerHTML = `
@@ -522,40 +694,52 @@ window.app = {
                         <button onclick="event.preventDefault(); app.showImageModal()" class="text-sm bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded flex items-center gap-2">
                             <i class="fas fa-image"></i>
                             <span class="hidden sm:inline">Images</span>
-                        </button>
-                    ` : ''}
+                        </button>` : ''}
                     <div class="hidden md:block text-right">
                         <div class="text-xs text-green-200 uppercase font-bold">${subjName}</div>
                         <div class="font-bold">${this.data.candidateName}</div>
                     </div>
-                    ${this.data.examMode === 'practice' ?
-                        `<div class="bg-white text-green-800 px-4 py-1 rounded font-mono font-bold text-lg shadow" id="timer-display">00:00</div>` :
-                        `<div class="bg-white text-green-800 px-4 py-1 rounded font-mono font-bold text-lg shadow">
-                            <i class="fas fa-book-open text-sm mr-1"></i>Study
-                        </div>`
-                    }
+                    ${this.data.examMode === 'practice'
+                        ? `<div class="bg-white text-green-800 px-4 py-1 rounded font-mono font-bold text-lg shadow" id="timer-display">00:00</div>`
+                        : `<div class="bg-white text-green-800 px-4 py-1 rounded font-mono font-bold text-lg shadow"><i class="fas fa-book-open text-sm mr-1"></i>Study</div>`}
                     <button onclick="event.preventDefault(); app.toggleMobileGrid()" class="md:hidden bg-green-800 hover:bg-green-900 text-white px-3 py-1 rounded">
                         <i class="fas fa-th"></i>
                     </button>
                 </div>`;
 
-            if (this.data.examMode === 'practice') {
-                this.updateTimerDisplay();
-            }
-        } else if (this.data.mode === 'result' || this.data.mode === 'review') {
-            headerActions.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <button onclick="event.preventDefault(); app.showLanding()" class="text-sm bg-green-800 hover:bg-green-900 px-3 py-1 rounded flex items-center gap-2">
-                        <i class="fas fa-home"></i>
-                        <span class="hidden sm:inline">Home</span>
-                    </button>
-                </div>`;
+            if (this.data.examMode === 'practice') this.updateTimerDisplay();
         } else {
             headerActions.innerHTML = `
                 <button onclick="event.preventDefault(); app.showLanding()" class="text-sm bg-green-800 hover:bg-green-900 px-3 py-1 rounded flex items-center gap-2">
                     <i class="fas fa-home"></i>
                     <span class="hidden sm:inline">Home</span>
                 </button>`;
+        }
+    },
+
+    setupMathJaxPatch: function () {
+        const methods = ['renderQuestion', 'showResult', 'showFullReview', 'viewTopicNote',
+                         'showSubjectDashboard', 'showLanding', 'showTestInterface'];
+        methods.forEach(methodName => {
+            if (this[methodName]) {
+                const original = this[methodName];
+                this[methodName] = function () {
+                    const result = original.apply(this, arguments);
+                    setTimeout(() => this.triggerMathJax(), 200);
+                    return result;
+                };
+            }
+        });
+    },
+
+    triggerMathJax: function () {
+        if (window.MathJax && MathJax.typesetPromise) {
+            const container = document.getElementById('app-container');
+            if (container) {
+                MathJax.typesetPromise([container]).catch(err => {
+                    console.warn('MathJax typeset error:', err);
+                });
+            }
         }
     }
 };
