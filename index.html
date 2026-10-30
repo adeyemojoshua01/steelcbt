@@ -8,7 +8,7 @@
     <meta name="format-detection" content="telephone=no">
     <title>University eduCBT</title>
 
-    <!-- Base styles -->
+    <!-- Styles -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/theme-aurora.css">
 
@@ -18,7 +18,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- MathJax -->
+    <!-- MathJax config (must be inline — needs to run before MathJax loads) -->
     <script>
         window.MathJax = {
             tex: {
@@ -34,7 +34,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 
-    <!-- Tesseract.js for Image OCR -->
+    <!-- Tesseract.js (loaded for compatibility — not used by any current module) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-gray-100 h-screen flex flex-col overflow-hidden text-gray-800" style="overflow: hidden;">
@@ -85,6 +85,7 @@
             </div>
 
             <div id="image-viewer-container" class="flex-grow flex flex-col">
+                <!-- Image Toolbar -->
                 <div class="image-toolbar">
                     <div class="flex items-center gap-1">
                         <button onclick="imageViewer.zoomIn()" title="Zoom In"><i class="fas fa-search-plus"></i></button>
@@ -95,9 +96,12 @@
                         <span id="image-count" class="text-sm text-gray-600">0 images</span>
                     </div>
                 </div>
+
+                <!-- Image Gallery -->
                 <div id="image-gallery" class="flex-grow overflow-auto image-gallery"></div>
             </div>
 
+            <!-- No Images Message -->
             <div id="no-images-message" class="hidden h-full flex items-center justify-center">
                 <div class="text-center p-8">
                     <i class="fas fa-image text-5xl text-gray-300 mb-4"></i>
@@ -166,21 +170,35 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- APPLICATION SCRIPTS                                          -->
-    <!-- Load order is CRITICAL — do not reorder                      -->
+    <!-- SCRIPT LOAD ORDER — DO NOT REORDER                             -->
     <!-- ============================================================ -->
-    <script src="js/image-viewer.js"></script>
-    <script src="js/app-core.js"></script>
-    <script src="js/app-exam.js"></script>
-    <script src="js/app-ai.js"></script>
-    <script src="js/app-results.js"></script>
-    <script src="js/math-formatter.js"></script>
-    <script src="js/explanation-viewer.js"></script>
-    <script src="js/verse-popup.js"></script>
-    <script src="js/navigation.js"></script>
-    <script src="js/init.js"></script>
 
-    <!-- Question Bank Importer (waits for window.app to exist) -->
-    <script src="question-banks/question-bank.js?v=2" defer></script>
+    <!-- 1. Foundations -->
+    <script src="js/image-viewer.js" defer></script>
+
+    <!-- 2. Core app object -->
+    <script src="js/app-core.js" defer></script>
+
+    <!-- 3. Method extensions (order among these 3 is interchangeable) -->
+    <script src="js/app-exam.js" defer></script>
+    <script src="js/app-ai.js" defer></script>
+    <script src="js/app-results.js" defer></script>
+
+    <!-- 4. Question banks — each pushes into window.CBT_SUBJECT_BANKS -->
+    <script src="question-banks/probability-bank.js" defer></script>
+    <!-- add more bank files here, before question-loader.js -->
+
+    <!-- 5. Bank loader — MUST come after all *-bank.js files -->
+    <script src="question-banks/question-loader.js" defer></script>
+
+    <!-- 6. Patchers — order matters (each wraps the previous) -->
+    <script src="js/explanation-viewer.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/verse-popup.js" defer></script>
+    <script src="js/math-formatter.js" defer></script>
+
+    <!-- 7. Boot — MUST be last -->
+    <script src="js/init.js" defer></script>
+
 </body>
 </html>
