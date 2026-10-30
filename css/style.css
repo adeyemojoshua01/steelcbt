@@ -97,3 +97,43 @@
 #fullscreen-explain-modal .theme-sepia .theme-toggle-btn { background: #e5dcd2 !important; color: #4a3b2c !important; }
 #fullscreen-explain-modal .theme-sepia .close-btn:hover,
 #fullscreen-explain-modal .theme-sepia .theme-toggle-btn:hover { background: #d4c9bb !important; }
+
+/* ============================================================
+   MATHJAX OVERFLOW FIX
+   Long \(...\) and \[...\] must scroll, not blow out the card.
+   ============================================================ */
+
+/* Inline math: never wider than its parent */
+mjx-container {
+    max-width: 100% !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* Display math: force a horizontal scrollbar when too wide */
+mjx-container[display="true"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    padding: 4px 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Slim, themed scrollbar for wide equations */
+mjx-container[display="true"]::-webkit-scrollbar        { height: 6px; }
+mjx-container[display="true"]::-webkit-scrollbar-track   { background: rgba(0,0,0,.06); border-radius: 3px; }
+mjx-container[display="true"]::-webkit-scrollbar-thumb   { background: rgba(0,0,0,.25); border-radius: 3px; }
+
+/* Long unbroken words (e.g. \( \frac{...}{...} \) rendered inline in text) */
+body {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+/* Flex children that hold math must be allowed to shrink below their content */
+.flex > *, .flex-grow { min-width: 0; }
+
+/* Note-viewer / prose blocks opt out of max-w-none, so clamp them */
+.prose, .note-content { max-width: 100%; }
