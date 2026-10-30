@@ -126,11 +126,11 @@ Object.assign(window.app, {
                         <p class="font-bold text-green-800">Marks Awarded: ${alreadyGraded.score} / ${q.maxMarks}</p>
                         <div class="mt-3 pt-3 border-t border-green-200">
                             <p class="text-xs text-green-600 font-bold mb-1">Your Submitted Answer:</p>
-                            <p class="text-sm text-gray-700 bg-white p-2 rounded mb-3">${userAnswer || 'No text provided.'}</p>
+                            <p class="text-sm text-gray-700 bg-white p-2 rounded mb-3 whitespace-pre-wrap break-words">${userAnswer || 'No text provided.'}</p>
                         </div>
                         <div class="p-3 bg-white rounded border border-green-200">
                             <p class="text-xs text-green-600 font-bold mb-1">Explanation / Model Answer:</p>
-                            <p class="text-sm text-gray-800 whitespace-pre-wrap">${alreadyGraded.explanation}</p>
+                            <p class="text-sm text-gray-800 whitespace-pre-wrap break-words">${alreadyGraded.explanation}</p>
                         </div>
                     </div>`;
             }
@@ -235,7 +235,7 @@ Object.assign(window.app, {
                                     <div onclick="event.preventDefault(); app.handleStudyAnswerClick('${q.id}', '${opt}')"
                                          class="block p-4 border-2 rounded-lg flex items-center gap-3 relative cursor-pointer study-option ${selectedClass}">
                                         <span class="w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold text-sm border border-gray-300">${opt}</span>
-                                        <span class="flex-grow">${q.options?.[opt] || ''}</span>
+                                        <span class="flex-grow whitespace-pre-wrap break-words min-w-0">${q.options?.[opt] || ''}</span>
                                         ${isSelected ? '<span class="text-blue-600 text-xs font-bold ml-2"><i class="fas fa-check-circle"></i> Selected</span>' : ''}
                                     </div>`;
                             }).join('')}
@@ -249,7 +249,7 @@ Object.assign(window.app, {
                                 <input type="radio" name="option" id="opt-${opt}" class="cbt-radio hidden" value="${opt}" ${userAnswer === opt ? 'checked' : ''} onchange="app.selectAnswer('${q.id}', '${opt}')">
                                 <label for="opt-${opt}" class="block p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 flex items-center gap-3">
                                     <span class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-sm">${opt}</span>
-                                    <span class="text-gray-700">${q.options?.[opt] || ''}</span>
+                                    <span class="text-gray-700 whitespace-pre-wrap break-words">${q.options?.[opt] || ''}</span>
                                 </label>
                             </div>
                         `).join('')}
@@ -315,7 +315,7 @@ Object.assign(window.app, {
                         </div>
                         <div class="bg-white p-4 rounded-lg border-l-4 border-blue-500">
                             <p class="font-bold text-gray-700 mb-2">📚 Explanation:</p>
-                            <p class="text-gray-700">${q.explanation}</p>
+                            <p class="text-gray-700 whitespace-pre-wrap break-words">${q.explanation}</p>
                         </div>
                         ${!isCorrect && q.type === 'objective'
                             ? `<div class="mt-3 p-3 bg-green-50 rounded-lg">
@@ -336,7 +336,7 @@ Object.assign(window.app, {
                             <p class="font-bold text-gray-700 mb-2">Correct answer:</p>
                             <p class="text-green-700 font-bold text-lg">${q.correct}</p>
                             ${q.type === 'objective' && q.options?.[q.correct]
-                                ? `<p class="text-gray-600 mt-1">${q.options[q.correct]}</p>`
+                                ? `<p class="text-gray-600 mt-1 whitespace-pre-wrap break-words">${q.options[q.correct]}</p>`
                                 : ''}
                         </div>
                     </div>`;
@@ -393,7 +393,7 @@ Object.assign(window.app, {
                             ${notesButtonHtml}
                             ${topicImagesButtonHtml}
                         </div>
-                        <div class="text-xl text-gray-800 font-medium mb-8 leading-relaxed whitespace-pre-wrap">${q.text}</div>
+                        <div class="text-xl text-gray-800 font-medium mb-8 leading-relaxed whitespace-pre-wrap break-words">${q.text}</div>
                         ${answerArea}
                         ${explanationArea}
                     </div>
