@@ -8,7 +8,7 @@ Q001: What is an event in probability? Give an example using a standard six-side
 Option: A: A subset of the sample space; Rolling a number greater than 4 is {5, 6}
 Option: B: The complement of an outcome; Rolling a number greater than 4 is {1, 2, 3, 4}
 Option: C: The total number of outcomes; Rolling a number greater than 4 is 2
-Option: D: The probability of an outcome; Rolling a number greater than 4 is \( \frac{1}{3} \)
+Option: D: The probability of an outcome; Rolling a number greater than 4 is  \\(\\frac{1}{3}\\)
 Answer: A
 Explanation: An event is defined as any subset of the sample space. For a six-sided die, the sample space is {1, 2, 3, 4, 5, 6}. Rolling a number greater than 4 includes the outcomes {5, 6}, which is a valid subset.
 
@@ -28,7 +28,7 @@ Q003: What is an event in probability? Give an example using a standard six-side
 Option: A: A subset of the sample space; Rolling a number greater than 4 is {5, 6}
 Option: B: The complement of an outcome; Rolling a number greater than 4 is {1, 2, 3, 4}
 Option: C: The total number of outcomes; Rolling a number greater than 4 is 2
-Option: D: The probability of an outcome; Rolling a number greater than 4 is \( \frac{1}{3} \)
+Option: D: The probability of an outcome; Rolling a number greater than 4 is \\(\\frac{1}{3}\\)
 Answer: A
 Explanation: An event is defined as any subset of the sample space. For a six-sided die, the sample space is {1, 2, 3, 4, 5, 6}. Rolling a number greater than 4 includes the outcomes {5, 6}, which is a valid subset.
 
@@ -40,10 +40,10 @@ Explanation: A sample space, often denoted by the symbol S or Ω, is the fundame
 
 Topic: Probability Spacious
 Type: MCQ
-Q005: Solve the system:<br>\( \begin{cases} 2x + 3y = 8 \ x - y = -1 \end{cases} \)<br><br>Which values of \((x,y)\) satisfy both equations?
-Option: A: \( (1, 2) \)
-Option: B: \( (2, 1) \)<br><em>Check by substitution</em>
-Option: C: \( (-1, -2) \)
-Option: D: \( (2, -1) \)
+Q005: Solve the system:<br>\\(2x + 3y = 8  x - y = -1\\)<br><br>Which values of (\\(x,y\\)) satisfy both equations?
+Option: A: ( \\(1, 2\\) )
+Option: B: ( \\(2, 1\\) )<br><em>Check by substitution</em>
+Option: C: ( \\(-1, -2\\) )
+Option: D: ( \\(2, -1\\) )
 Answer: A
-Explanation: Add the second equation to the first (scaled): from \(x - y = -1\) we get \(x = y - 1\).`);
+Explanation: Add the second equation to the first (scaled): from \\(\\text{ }\\)\\(x - y = -1\\) we get \\(\\text{ }\\)\\(x = y - 1\\).`);
