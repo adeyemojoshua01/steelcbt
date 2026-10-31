@@ -5,9 +5,8 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'Groq API key missing in Vercel' });
 
     try {
-        const { studentAnswer, referenceAnswer, maxMarks, imageBase64, isImage } = req.body;
+        const { studentAnswer, referenceAnswer, maxMarks, imageBase64, isImage, questionImageBase64 } = req.body;
 
-        // 🛡️ STEP 1: Ask Groq for the live list of models
         const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
             headers: { 'Authorization': `Bearer ${apiKey}` }
         });
@@ -18,63 +17,43 @@ export default async function handler(req, res) {
         let prompt = '';
         let messages = [];
 
-        if (isImage && imageBase64) {
+        if (isImage || questionImageBase64) {
             // --- VISION MODE ---
-            // Explicit list of known multimodal models on Groq
             const knownVisionModels = [
-                'qwen/qwen3.8-27b',
-                'meta-models/muse-spark-open',
+                'qwen/qwen3.8-27b', 'meta-models/muse-spark-open',
                 'meta-llama/llama-4-maverick-17b-128e-instruct',
                 'meta-llama/llama-4-scout-17b-16e-instruct'
             ];
+            chosenModel = knownVisionModels.find(id => availableModels.includes(id)) || availableModels.find(id => id.includes('vision') || id.includes('llava'));
 
-            // Find the first model from our known list that is actually available
-            chosenModel = knownVisionModels.find(id => availableModels.includes(id));
-
-            if (!chosenModel) {
-                throw new Error("No known vision models are currently available on this Groq account.");
-            }
+            if (!chosenModel) throw new Error("No vision models are currently available on this Groq account.");
 
             prompt = `
                 You are an automated examiner for any academic subject.
                 Question Context (Admin's Answer): "${referenceAnswer}"
                 Maximum Marks: ${maxMarks}
 
-                The student has uploaded an image of their handwritten answer.
+                ${questionImageBase64 ? "I have provided the question's diagram as the FIRST image, and the student's answer as the SECOND image." : "The student has uploaded an image of their handwritten answer."}
+                
                 Please do two things:
-                1. Transcribe the handwritten text from the image accurately.
-                2. Grade the student's transcribed answer fairly based on the Admin's answer.
+                1. Transcribe the handwritten text from the student's answer accurately.
+                2. Grade the student's transcribed answer fairly. If a question diagram is provided, use it to evaluate if the student's answer correctly references or uses the diagram.
 
                 Return ONLY a valid JSON object.
-                {"score": (number from 0 to ${maxMarks}), "reason": "A brief explanation.", "transcription": "The exact text you read from the image"}
+                {"score": (number from 0 to ${maxMarks}), "reason": "A brief explanation.", "transcription": "The exact text you read from the student's answer"}
             `;
 
-            messages = [
-                {
-                    role: "user",
-                    content: [
-                        { type: "text", text: prompt },
-                        { type: "image_url", image_url: { url: imageBase64 } }
-                    ]
-                }
-            ];
+            const contentArray = [{ type: "text", text: prompt }];
+            if (questionImageBase64) contentArray.push({ type: "image_url", image_url: { url: questionImageBase64 } });
+            if (imageBase64) contentArray.push({ type: "image_url", image_url: { url: imageBase64 } });
+
+            messages = [{ role: "user", content: contentArray }];
 
         } else {
-            // --- TEXT MODE (Typed answers) ---
-            const textModels = availableModels.filter(id => 
-                !id.includes('vision') && !id.includes('whisper') && !id.includes('guard')
-            );
-
-            // Preferred fast and capable text models on Groq
-            const preferredTextModels = [
-                'llama-3.3-70b-versatile', 
-                'llama-3.1-8b-instant', 
-                'mixtral-8x7b-32768', 
-                'gemma2-9b-it'
-            ];
-            
+            // --- TEXT MODE ---
+            const textModels = availableModels.filter(id => !id.includes('vision') && !id.includes('whisper') && !id.includes('guard'));
+            const preferredTextModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
             chosenModel = preferredTextModels.find(p => textModels.includes(p)) || textModels[0];
-
             if (!chosenModel) throw new Error("No text models found on Groq.");
 
             prompt = `
@@ -84,6 +63,7 @@ export default async function handler(req, res) {
                 Maximum Marks: ${maxMarks}
 
                 Grade the student's answer fairly based on the Admin's answer.
+                ${questionImageBase64 ? "Note: The question includes a diagram, which has been attached to this prompt." : ""}
 
                 Return ONLY a valid JSON object.
                 {"score": (number from 0 to ${maxMarks}), "reason": "A brief explanation."}
@@ -92,48 +72,33 @@ export default async function handler(req, res) {
             messages = [{ role: "user", content: prompt }];
         }
 
-        console.log(`Using dynamically selected model: ${chosenModel} | Mode: ${isImage ? 'Vision' : 'Text'}`);
+        console.log(`Using model: ${chosenModel} | Mode: ${isImage || questionImageBase64 ? 'Vision' : 'Text'}`);
 
-        // 🧠 STEP 2: Grade the answer
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({
                 model: chosenModel,
                 messages: messages,
                 response_format: { type: "json_object" },
-                max_tokens: 800, // 🛡️ Prevents the OTPM limit error
+                max_tokens: 800,
                 temperature: 0.1
             })
         });
 
         const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error?.message || 'Groq API Error');
-        }
+        if (!response.ok) throw new Error(result.error?.message || 'Groq API Error');
 
         const content = result.choices[0].message.content;
-
         let aiResponse;
-        try {
-            aiResponse = JSON.parse(content);
-        } catch (e) {
+        try { aiResponse = JSON.parse(content); } catch (e) {
             const match = content.match(/\{[\s\S]*\}/);
-            if (match) {
-                aiResponse = JSON.parse(match[0]);
-            } else {
-                throw new Error("AI did not return valid JSON: " + content);
-            }
+            if (match) aiResponse = JSON.parse(match[0]);
+            else throw new Error("AI did not return valid JSON: " + content);
         }
 
-        const finalScore = Number(aiResponse.score) || 0;
-
         res.status(200).json({
-            score: finalScore,
+            score: Number(aiResponse.score) || 0,
             reason: aiResponse.reason || "Graded by AI.",
             transcription: aiResponse.transcription || null 
         });
