@@ -104,8 +104,8 @@ Object.assign(window.app, {
                         <button onclick="app.submitTheoryText('${q.id}')" id="submit-text-btn-${q.id}" class="mt-2 w-full ${this.data.examMode === 'practice' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white px-6 py-3 rounded-lg font-bold transition"><i class="fas ${this.data.examMode === 'practice' ? 'fa-save' : 'fa-magic'} mr-2"></i>${this.data.examMode === 'practice' ? 'Save Answer' : 'Submit for AI Grading'}</button>
                     </div>
                     <div id="theory-image-container-${q.id}" class="${(userAnswer && String(userAnswer).startsWith('data:image')) || alreadyGraded ? '' : 'hidden'}">
-                        <input type="file" id="theory-image-input-${q.id}" accept="image/*" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 mb-2" ${alreadyGraded ? 'disabled' : ''}>
-                        <div id="image-preview-container-${q.id}" class="mt-2 ${(userAnswer && String(userAnswer).startsWith('data:image')) ? '' : 'hidden'}">
+                           <input type="file" id="theory-image-input-${q.id}" accept="image/*" capture="environment" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 mb-2" ${alreadyGraded ? 'disabled' : ''}>
+                            <div id="image-preview-container-${q.id}" class="mt-2 ${(userAnswer && String(userAnswer).startsWith('data:image')) ? '' : 'hidden'}">
                             <img id="theory-image-preview-${q.id}" src="${(userAnswer && String(userAnswer).startsWith('data:image')) ? userAnswer : ''}" class="max-h-60 rounded-lg border shadow-md mb-2 w-full object-contain" />
                             <button onclick="app.submitTheoryImage('${q.id}')" id="submit-image-btn-${q.id}" class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition"><i class="fas fa-magic mr-2"></i>${this.data.examMode === 'practice' ? 'Save Image' : 'Submit for AI Grading'}</button>
                         </div>
