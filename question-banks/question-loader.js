@@ -24,7 +24,6 @@
     function parseQuestions(text) {
         const lines = text.split('\n');
         const subjects = {};
-        const globalImageBank = {}; // Stores ImageBank IDs and Base64 data
 
         let currentSubject = null;
         let currentTopic = null;
@@ -36,13 +35,6 @@
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
             if (line === '' || line.startsWith('===')) continue;
-
-            // Parse global images
-            if (line.match(/^ImageBank:/i)) {
-                const parts = line.substring(10).split('|');
-                if (parts.length >= 2) globalImageBank[parts[0].trim()] = parts.slice(1).join('|').trim();
-                continue;
-            }
 
             if (line.match(/^Subject:/i)) {
                 if (currentQuestion) finalizeQuestion();
@@ -88,8 +80,7 @@
                     options: type === 'mcq' ? {} : null,
                     topicId: currentTopic ? currentTopic.id : 'general',
                     subTopic: currentSubTopic || 'General',
-                    maxMarks: 10,
-                    image: null
+                    maxMarks: 10
                 };
                 explanationLines = [];
                 readingExplanation = false;
@@ -103,14 +94,6 @@
             }
 
             if (!currentQuestion) continue;
-
-            // Link image refs to global bank
-            const imgRefMatch = line.match(/^ImageRef:\s*(.*)$/i);
-            if (imgRefMatch) {
-                const imgId = imgRefMatch[1].trim();
-                if (globalImageBank[imgId]) currentQuestion.image = globalImageBank[imgId];
-                continue;
-            }
 
             const qMatch = line.match(/^Q\d+:\s*(.*)$/i);
             if (qMatch) { currentQuestion.text = qMatch[1].trim(); continue; }
