@@ -904,13 +904,23 @@
     }
 
     // Function to import directly from GitHub raw URL
+        // Function to import directly from GitHub raw URL
     async function importFromGitHub() {
-      const owner = localStorage.getItem('gh_owner');
-      const repo = localStorage.getItem('gh_repo');
+      let owner = localStorage.getItem('gh_owner');
+      let repo = localStorage.getItem('gh_repo');
       
+      // 🌟 NEW: If credentials aren't saved, ask for them right now
       if (!owner || !repo) {
-        showToast('Please configure GitHub credentials in the Publish menu first.', 'warning');
-        return;
+        owner = prompt("Enter your GitHub Username:");
+        if (!owner) return; // User cancelled
+        
+        repo = prompt("Enter your GitHub Repository Name:");
+        if (!repo) return; // User cancelled
+        
+        // Save them for next time
+        localStorage.setItem('gh_owner', owner);
+        localStorage.setItem('gh_repo', repo);
+        showToast('GitHub details saved!', 'success');
       }
 
       const filename = prompt("Enter the exact file name to import from the question-banks folder (e.g., physics-bank.js):");
@@ -921,7 +931,7 @@
         const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/question-banks/${filename}`;
         const response = await fetch(rawUrl);
         
-        if (!response.ok) throw new Error("File not found. Make sure it's in the /question-banks/ folder.");
+        if (!response.ok) throw new Error("File not found. Make sure it's in the /question-banks/ folder and your repo is set to 'main'.");
         
         const codeText = await response.text();
         document.getElementById('import-paste-area').value = codeText;
