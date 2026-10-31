@@ -26,4 +26,5 @@ Option: A: C
 Option: B: D
 Option: C: righ
 Option: D: B
-Answer: C`);
+Answer: C
+');
