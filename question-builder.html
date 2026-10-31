@@ -64,6 +64,7 @@
       <button onclick="openImportModal()" class="px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg border border-ink-600 hover:border-mid text-mid hover:text-hi bg-ink-800/50 hover:bg-ink-800 transition shrink-0">Import</button>
       <button id="btn-preview" onclick="togglePreview()" class="px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg border border-brand/40 text-brand-light hover:bg-brand-dark/20 transition flex items-center gap-1.5 shrink-0">👁 <span id="preview-btn-text" class="hidden sm:inline">Preview</span></button>
       <button onclick="openExportModal()" class="px-2 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber text-ink-900 hover:bg-amber-light transition shadow-sm shrink-0">Export</button>
+           <button onclick="openPublishModal()" class="px-2 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-brand text-ink-900 hover:bg-brand-light transition shadow-sm shrink-0">Publish</button>
     </div>
   </header>
 
@@ -126,6 +127,9 @@
         <div id="import-drop-zone" onclick="document.getElementById('import-file-input').click()" class="border-2 border-dashed border-ink-600 hover:border-brand bg-ink-800/40 rounded-xl p-4 text-center cursor-pointer transition"><p class="text-xs font-medium text-hi">Drop .js file or click to browse</p><input type="file" id="import-file-input" accept=".js,.txt" class="hidden" onchange="handleImportFileSelect(event)"></div>
         <div class="text-center text-xs text-lo font-mono">— or paste —</div>
         <textarea id="import-paste-area" oninput="handleImportPaste()" rows="5" class="w-full bg-ink-800 font-mono text-xs text-hi border border-ink-700 rounded-xl p-3 focus:outline-none focus:border-brand" placeholder="window.CBT_SUBJECT_BANKS.push(`...`)"></textarea>
+        <button onclick="importFromGitHub()" class="mt-2 text-xs text-brand-light hover:underline flex items-center gap-1">
+  <span>☁️</span> Import directly from my GitHub Repo
+</button>
       </div>
       <div id="import-parse-result" class="bg-ink-800/60 border border-ink-700 rounded-xl p-3 text-xs space-y-1.5 hidden"><div id="import-summary" class="font-semibold text-brand-light"></div><div id="import-warnings" class="text-amber text-[11px] space-y-1"></div></div>
       <div class="space-y-3 pt-2">
@@ -159,6 +163,40 @@
   </div>
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
+  <!-- MODAL: PUBLISH -->
+  <div id="modal-publish" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-ink-900 border border-ink-700 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-ink-700 pb-3">
+        <h3 class="text-base font-bold text-hi flex items-center gap-2">🚀 Publish to GitHub</h3>
+        <button onclick="closeModal('modal-publish')" class="text-lo hover:text-hi p-1">✕</button>
+      </div>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-mid block mb-1">GitHub Username/Org</label>
+          <input id="gh-owner" type="text" placeholder="e.g. your-username" class="w-full bg-ink-800 text-xs text-hi border border-ink-700 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
+        </div>
+        <div>
+          <label class="text-xs text-mid block mb-1">Repository Name</label>
+          <input id="gh-repo" type="text" placeholder="e.g. educbt-project" class="w-full bg-ink-800 text-xs text-hi border border-ink-700 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
+        </div>
+        <div>
+          <label class="text-xs text-mid block mb-1">GitHub Token (Hidden, stored in localStorage)</label>
+          <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-ink-800 text-xs text-hi border border-ink-700 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
+        </div>
+        <div>
+          <label class="text-xs text-mid block mb-1">File Name to Create/Overwrite</label>
+          <input id="publish-filename" type="text" placeholder="physics-bank.js" class="w-full bg-ink-800 font-mono text-xs text-hi border border-ink-700 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-ink-700 flex justify-end space-x-2">
+        <button onclick="closeModal('modal-publish')" class="px-4 py-2 text-xs font-medium text-mid hover:text-hi transition">Cancel</button>
+        <button id="btn-do-publish" onclick="executePublish()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-brand text-ink-900 hover:bg-brand-light transition">Publish & Deploy</button>
+      </div>
+    </div>
+  </div>
+  
   <script>
     const LOCAL_STORAGE_KEY = 'cbt_bank_builder_state';
     let appData = { bankName: "Untitled Bank", subjects: [] };
@@ -787,6 +825,97 @@
       if (typeof str !== 'string') return str;
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+
+
+        /* ==========================================================================
+       GITHUB PUBLISHING & IMPORTING
+       ========================================================================== */
+    function openPublishModal() {
+      document.getElementById('modal-publish').classList.remove('hidden');
+      
+      // Load saved credentials
+      document.getElementById('gh-owner').value = localStorage.getItem('gh_owner') || '';
+      document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
+      document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+      
+      const slug = (appData.subjects[0]?.name || 'bank').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      document.getElementById('publish-filename').value = `${slug}-bank.js`;
+    }
+
+    async function executePublish() {
+      const owner = document.getElementById('gh-owner').value.trim();
+      const repo = document.getElementById('gh-repo').value.trim();
+      const token = document.getElementById('gh-token').value.trim();
+      const filename = document.getElementById('publish-filename').value.trim();
+
+      if (!owner || !repo || !token || !filename) {
+        showToast('Please fill all fields', 'error'); return;
+      }
+
+      // Save credentials locally so you don't type them every time
+      localStorage.setItem('gh_owner', owner);
+      localStorage.setItem('gh_repo', repo);
+      localStorage.setItem('gh_token', token);
+
+      const btn = document.getElementById('btn-do-publish');
+      btn.innerHTML = 'Publishing...'; btn.disabled = true;
+
+      // Generate the JS code
+      const code = generateExportJSCode(false);
+
+      try {
+        const response = await fetch('/api/publish-bank', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename, code, githubToken: token, repoOwner: owner, repoName: repo })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to publish');
+
+        showToast('Published successfully! Vercel is deploying.', 'success');
+        closeModal('modal-publish');
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      } finally {
+        btn.innerHTML = 'Publish & Deploy'; btn.disabled = false;
+      }
+    }
+
+    // Function to import directly from GitHub raw URL
+    async function importFromGitHub() {
+      const owner = localStorage.getItem('gh_owner');
+      const repo = localStorage.getItem('gh_repo');
+      
+      if (!owner || !repo) {
+        showToast('Please configure GitHub credentials in the Publish menu first.', 'warning');
+        return;
+      }
+
+      const filename = prompt("Enter the exact file name to import from the question-banks folder (e.g., physics-bank.js):");
+      if (!filename) return;
+
+      try {
+        showToast('Fetching from GitHub...', 'info');
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/question-banks/${filename}`;
+        const response = await fetch(rawUrl);
+        
+        if (!response.ok) throw new Error("File not found. Make sure it's in the /question-banks/ folder.");
+        
+        const codeText = await response.text();
+        document.getElementById('import-paste-area').value = codeText;
+        parseImportCode(codeText);
+        
+        document.getElementById('modal-import').classList.remove('hidden');
+        showToast('Fetched! Click Parse & Import below.', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    
   </script>
+
+
+  
 </body>
 </html>
