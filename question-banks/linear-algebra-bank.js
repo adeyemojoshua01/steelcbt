@@ -2,8 +2,9 @@ ImageBank: img_mloyhxkl5 | data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4g
 
 window.CBT_SUBJECT_BANKS = window.CBT_SUBJECT_BANKS || [];
 
-window.CBT_SUBJECT_BANKS.push(`Subject: Linear Algebra
+window.CBT_SUBJECT_BANKS.push(`
 
+Subject: Linear Algebra
 Topic: Matrices
 SubTopic: Determinants
 Type: MCQ
