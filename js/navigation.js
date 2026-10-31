@@ -25,7 +25,6 @@
 
             push: function (screenKey, state, renderFn) {
                 if (this._booted && this.stack[this.stack.length - 1] === screenKey) {
-                    // Already on this screen — just render (no new history entry)
                     renderFn();
                     return;
                 }
@@ -52,11 +51,17 @@
                         case 'candidate-options':
                             app.showCandidateOptions();
                             break;
+                        case 'mode-selection':
+                            if (state.subjectId) app.showModeSelection(state.subjectId);
+                            else app.showCandidateOptions();
+                            break;
                         case 'login-practice':
-                            app.showCandidateLogin('practice');
+                            if (state.subjectId) app.showCandidateLogin('practice', state.subjectId);
+                            else app.showCandidateOptions();
                             break;
                         case 'login-study':
-                            app.showCandidateLogin('study');
+                            if (state.subjectId) app.showCandidateLogin('study', state.subjectId);
+                            else app.showCandidateOptions();
                             break;
                         case 'notes-browser':
                             if (state.subjectId) app.showSubjectNotes(state.subjectId);
@@ -75,8 +80,6 @@
                             else app.showLanding();
                             break;
                         case 'test':
-                            // They back-buttoned out of an exam.
-                            // Re-trap them — exam state is still live.
                             if (app.data.mode === 'test') {
                                 history.pushState({ screen: 'test' }, '', '#test');
                                 app.showNotification(
@@ -91,7 +94,6 @@
                             app.showLanding();
                     }
                 } finally {
-                    // Release suppression after a tick so any nested renders settle
                     setTimeout(() => { nav._suppress = false; }, 0);
                 }
             }
@@ -99,17 +101,12 @@
 
         // ========================================================
         // WRAP EXISTING app.* FUNCTIONS
-        // Original bodies are preserved; we just intercept the
-        // navigation calls and mirror them into history.
         // ========================================================
 
         // -------- showLanding --------
         const _origShowLanding = app.showLanding.bind(app);
         app.showLanding = function () {
-            if (nav._suppress) {
-                // Called from popstate — just render, don't touch history
-                return _origShowLanding();
-            }
+            if (nav._suppress) return _origShowLanding();
             nav.replace('landing', {}, _origShowLanding);
         };
 
@@ -120,11 +117,18 @@
             nav.push('candidate-options', {}, _origShowCandidateOptions);
         };
 
+        // -------- showModeSelection --------
+        const _origShowModeSelection = app.showModeSelection.bind(app);
+        app.showModeSelection = function (subjectId) {
+            if (nav._suppress) return _origShowModeSelection(subjectId);
+            nav.push('mode-selection', { subjectId: subjectId }, () => _origShowModeSelection(subjectId));
+        };
+
         // -------- showCandidateLogin --------
         const _origShowCandidateLogin = app.showCandidateLogin.bind(app);
-        app.showCandidateLogin = function (mode) {
-            if (nav._suppress) return _origShowCandidateLogin(mode);
-            nav.push('login-' + mode, { mode: mode }, () => _origShowCandidateLogin(mode));
+        app.showCandidateLogin = function (mode, subjectId) {
+            if (nav._suppress) return _origShowCandidateLogin(mode, subjectId);
+            nav.push('login-' + mode, { mode: mode, subjectId: subjectId }, () => _origShowCandidateLogin(mode, subjectId));
         };
 
         // -------- showSubjectNotes --------
@@ -138,8 +142,6 @@
         const _origShowSimplifiedResult = app.showSimplifiedResult.bind(app);
         app.showSimplifiedResult = function (score, total, percentage) {
             if (nav._suppress) return _origShowSimplifiedResult(score, total, percentage);
-            // REPLACE so back-button from results goes to login screen,
-            // not the just-finished exam.
             nav.replace('result', { score: score }, () => _origShowSimplifiedResult(score, total, percentage));
         };
 
@@ -150,7 +152,7 @@
             nav.push('review', {}, _origShowFullReview);
         };
 
-        // -------- showTestInterface (called once when exam starts) --------
+        // -------- showTestInterface --------
         const _origShowTestInterface = app.showTestInterface.bind(app);
         app.showTestInterface = function () {
             if (nav._suppress) return _origShowTestInterface();
@@ -161,11 +163,9 @@
         // POPSTATE LISTENER
         // ========================================================
         window.addEventListener('popstate', function (e) {
-            // Special case: exam in progress — trap the back button
             if (app.data.mode === 'test') {
                 history.pushState({ screen: 'test' }, '', '#test');
                 if (confirm('Leave the exam? Your answers will be lost.')) {
-                    // User confirmed — actually leave
                     app.data.mode = 'landing';
                     app.data.questions = [];
                     app.data.userAnswers = {};
@@ -180,7 +180,6 @@
                 return;
             }
 
-            // Normal screens — restore the target screen
             const targetScreen = (e.state && e.state.screen) || 'landing';
             const idx = nav.stack.indexOf(targetScreen);
             if (idx >= 0) nav.stack = nav.stack.slice(0, idx + 1);
@@ -188,23 +187,15 @@
             nav.handlePop(e.state);
         });
 
-        // ========================================================
-        // SEED HISTORY WITH LANDING
-        // ========================================================
         history.replaceState({ screen: 'landing' }, '', '#landing');
         nav.stack = ['landing'];
         nav._booted = true;
 
-        // ========================================================
-        // BOOT: render landing (bypassing history push via suppress)
-        // ========================================================
         nav._suppress = true;
         _origShowLanding();
         setTimeout(() => { nav._suppress = false; }, 0);
 
-        // Expose for debugging (optional — matches original)
         window.nav = nav;
-        console.log('✅ Back-button navigation manager ready');
     }
 
     boot();
