@@ -19,29 +19,20 @@ export default async function handler(req, res) {
         let messages = [];
 
         if (isImage && imageBase64) {
-            // --- VISION MODE (Handwriting) ---
-            // 1. Check for the exact current Groq vision models
-            const visionModels = availableModels.filter(id => 
-                id === 'qwen/qwen3.8-27b' || 
-                id === 'meta-models/muse-spark-open' ||
-                id.includes('qwen') // Fallback for future Qwen vision versions
-            );
-            
-            if (visionModels.length > 0) {
-                chosenModel = visionModels[0]; 
-            } else {
-                // 2. Fallback: If the above exact IDs aren't found, pick any multimodal model
-                // (This ensures the app doesn't break if Groq renames the models again)
-                const fallbackVision = availableModels.find(id => 
-                    id.includes('vision') || id.includes('llava')
-                );
-                if (fallbackVision) {
-                    chosenModel = fallbackVision;
-                }
-            }
+            // --- VISION MODE ---
+            // Explicit list of known multimodal models on Groq
+            const knownVisionModels = [
+                'qwen/qwen3.8-27b',
+                'meta-models/muse-spark-open',
+                'meta-llama/llama-4-maverick-17b-128e-instruct',
+                'meta-llama/llama-4-scout-17b-16e-instruct'
+            ];
+
+            // Find the first model from our known list that is actually available
+            chosenModel = knownVisionModels.find(id => availableModels.includes(id));
 
             if (!chosenModel) {
-                throw new Error("No vision models are currently available on this Groq account.");
+                throw new Error("No known vision models are currently available on this Groq account.");
             }
 
             prompt = `
@@ -71,10 +62,17 @@ export default async function handler(req, res) {
         } else {
             // --- TEXT MODE (Typed answers) ---
             const textModels = availableModels.filter(id => 
-                !id.includes('vision') && !id.includes('whisper')
+                !id.includes('vision') && !id.includes('whisper') && !id.includes('guard')
             );
 
-            const preferredTextModels = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'qwen/qwen3-32b'];
+            // Preferred fast and capable text models on Groq
+            const preferredTextModels = [
+                'llama-3.3-70b-versatile', 
+                'llama-3.1-8b-instant', 
+                'mixtral-8x7b-32768', 
+                'gemma2-9b-it'
+            ];
+            
             chosenModel = preferredTextModels.find(p => textModels.includes(p)) || textModels[0];
 
             if (!chosenModel) throw new Error("No text models found on Groq.");
@@ -96,7 +94,7 @@ export default async function handler(req, res) {
 
         console.log(`Using dynamically selected model: ${chosenModel} | Mode: ${isImage ? 'Vision' : 'Text'}`);
 
-        // 🧠 STEP 3: Grade the answer
+        // 🧠 STEP 2: Grade the answer
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -107,6 +105,7 @@ export default async function handler(req, res) {
                 model: chosenModel,
                 messages: messages,
                 response_format: { type: "json_object" },
+                max_tokens: 800, // 🛡️ Prevents the OTPM limit error
                 temperature: 0.1
             })
         });
@@ -144,4 +143,3 @@ export default async function handler(req, res) {
         res.status(500).json({ error: error.message || "The AI Brain is currently offline." });
     }
 }
-
