@@ -203,73 +203,54 @@
     // --------------------------------------------------------
     // Import — reload from storage, clean up old data, merge
     // --------------------------------------------------------
+        // --------------------------------------------------------
+    // Import — strictly overwrite with bank file data
+    // --------------------------------------------------------
     function doImport() {
-        // 1. Reload existing subjects from storage so we don't lose user data
-        const saved = localStorage.getItem('cbt_subjects');
-        if (saved) {
-            try { app.data.subjects = JSON.parse(saved); } catch (e) {}
-        }
-
-        // 2. Cleanup: automatically delete legacy "General Science" subject
-        let cleaned = false;
-        for (let id in app.data.subjects) {
-            if (app.data.subjects[id].name === 'General Science') {
-                delete app.data.subjects[id];
-                cleaned = true;
-            }
-        }
-        if (cleaned) {
-            app.saveSubjects();
-            console.log('🧹 Removed old General Science data automatically.');
-        }
-
-        // 3. Parse the combined bank text
+        // 1. Parse the combined bank text from your .js files
         const combinedText = window.CBT_SUBJECT_BANKS.join('\n');
         const newSubjects = parseQuestions(combinedText);
         let totalQuestions = 0;
 
-        for (let id in newSubjects) {
-            const newSubj = newSubjects[id];
-
-            // Find an existing subject with the same NAME
-            let existingId = null;
-            for (let key in app.data.subjects) {
-                if (app.data.subjects[key].name === newSubj.name) {
-                    existingId = key;
-                    break;
+        // 2. (Optional) Preserve notes and images from Local Storage if they exist
+        // This prevents students from losing their study materials when you update questions.
+        const saved = localStorage.getItem('cbt_subjects');
+        if (saved) {
+            try {
+                const oldSubjects = JSON.parse(saved);
+                for (let id in newSubjects) {
+                    // Find if this subject existed before by checking the name
+                    const oldMatch = Object.values(oldSubjects).find(s => s.name === newSubjects[id].name);
+                    if (oldMatch) {
+                        if (oldMatch.notes) newSubjects[id].notes = oldMatch.notes;
+                        if (oldMatch.topicImages) newSubjects[id].topicImages = oldMatch.topicImages;
+                    }
                 }
-            }
-
-            // OVERWRITE the existing subject so newly added questions
-            // (e.g. new Theory items) show up on next load.
-            if (existingId) {
-                newSubj.id = existingId;
-                app.data.subjects[existingId] = newSubj;
-            } else {
-                app.data.subjects[id] = newSubj;
-            }
-            totalQuestions += newSubj.questions.length;
+            } catch (e) { console.warn("Could not merge old notes/images", e); }
         }
 
-        // 4. Save merged result
+        // 3. 🛑 STRICT OVERWRITE: Wipe old subjects and use ONLY what was in the .js files
+        app.data.subjects = newSubjects;
+        
+        for (let id in newSubjects) {
+            totalQuestions += newSubjects[id].questions.length;
+        }
+
+        // 4. Save the clean slate back to Local Storage
         try {
             app.saveSubjects();
-            console.log(`✅ question-loader.js: loaded ${totalQuestions} questions from ${window.CBT_SUBJECT_BANKS.length} bank file(s)`);
+            console.log(`✅ question-loader.js: strictly loaded ${totalQuestions} questions from ${window.CBT_SUBJECT_BANKS.length} bank file(s).`);
         } catch (e) {
             console.error('Import failed:', e);
             return;
         }
 
-        // 5. Re-render ONLY if init.js already rendered the landing page.
-        //    If init.js hasn't run yet (container empty), it will render
-        //    the landing page itself with the freshly-merged data — no
-        //    double-render, no flash.
+        // 5. Re-render the landing page
         const container = document.getElementById('app-container');
         if (app.data.mode === 'landing' && container && container.innerHTML.trim().length > 0) {
             app.showLanding();
         }
     }
-
     // Kick off
     tryImport();
 })();
