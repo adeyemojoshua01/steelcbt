@@ -409,8 +409,8 @@ window.app = {
             <div class="flex flex-col items-center justify-center min-h-full py-6 px-4">
                 <div class="text-center mb-8">
                     <i class="fas fa-book-open text-6xl text-blue-600 mb-4"></i>
-                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Select a Subject</h2>
-                    <p class="text-gray-600">Choose the subject you want to be examined on</p>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Select a Course</h2>
+                    <p class="text-gray-600">Choose the Course you want to be examined on</p>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
