@@ -1,6 +1,6 @@
 window.CBT_SUBJECT_BANKS = window.CBT_SUBJECT_BANKS || [];
 
-window.CBT_SUBJECT_BANKS.push(`Subject: Untitled Subject
+window.CBT_SUBJECT_BANKS.push(`Subject: Bible Quiz
 
 Topic: GENESIS 
 SubTopic: Chapter one 
