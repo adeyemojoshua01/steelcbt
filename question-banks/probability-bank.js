@@ -2,16 +2,6 @@ window.CBT_SUBJECT_BANKS = window.CBT_SUBJECT_BANKS || [];
 
 window.CBT_SUBJECT_BANKS.push(`Subject: Probability I
 
-Topic: Probability Space & Theorems
-Type: MCQ
-Q001: Define a sample space. What is the sample space for tossing a single fair coin?
-Option: A: The set of all possible outcomes of an experiment; {Heads, Tails}
-Option: B: The set of all possible outcomes of an experiment; {Tails}
-Option: C: The set of favorable outcomes; {Heads, Tails}
-Option: D: The set of all possible outcomes of an experiment; {Heads}
-Answer: A
-Explanation: A sample space is defined as the set of all possible outcomes of a random experiment. For a single fair coin toss, there are exactly two possible outcomes: Heads and Tails. Therefore, the sample space is {Heads, Tails}.
-
 Topic: Probability Spacious
 Type: MCQ
 Q001: What is an event in probability? Give an example using a standard six-sided die.
