@@ -43,6 +43,7 @@
         const subjects = {};
         let currentSubject = null;
         let currentTopic = null;
+        let currentSubTopic = null; // 🌟 NEW
         let currentQuestion = null;
         let currentOptions = {};
         let explanationLines = [];
@@ -87,6 +88,15 @@
                     }
                     currentTopic = existingTopic;
                 }
+                currentSubTopic = null; // 🌟 NEW: Reset sub-topic when topic changes
+                continue;
+            }
+
+            // 🌟 NEW: Parse SubTopic
+            const subTopicMatch = line.match(/^SubTopic:\s*(.*)$/i);
+            if (subTopicMatch) {
+                if (currentQuestion) finalizeQuestion();
+                currentSubTopic = subTopicMatch[1].trim();
                 continue;
             }
 
@@ -101,6 +111,7 @@
                     explanation: '',
                     options: type === 'mcq' ? {} : null,
                     topicId: currentTopic ? currentTopic.id : 'general',
+                    subTopic: currentSubTopic || 'General', // 🌟 NEW: Attach sub-topic
                     maxMarks: 10
                 };
                 currentOptions = {};
