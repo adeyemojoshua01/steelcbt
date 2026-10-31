@@ -24,21 +24,25 @@ Object.assign(window.app, {
         this.data.userAnswers[String(q.id)] = answerText;
 
         // PRACTICE MODE: Save without grading
+                // 2. PRACTICE MODE: Save the compressed Base64 string
         if (this.data.examMode === 'practice') {
+            this.data.userAnswers[String(q.id)] = imageBase64;
             this.saveExamState();
-            this.showNotification("Answer saved. You can edit and save again.", "success");
-
-            const btn = document.getElementById(`submit-text-btn-${qId}`);
-            btn.innerHTML = '<i class="fas fa-check mr-2"></i>Answer Saved!';
+            this.showNotification("Image saved. You can change it and save again.", "success");
+            
+            btn.innerHTML = '<i class="fas fa-check mr-2"></i>Image Saved!';
+            btn.disabled = false;
 
             // Reset button after 2 seconds so they know they can save again
             setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Answer';
+                const currentBtn = document.getElementById(`submit-image-btn-${qId}`);
+                if (currentBtn) {
+                    currentBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Image';
+                }
             }, 2000);
 
             return;
         }
-
         // STUDY MODE: Grade immediately
         const btn = document.getElementById(`submit-text-btn-${qId}`);
         btn.innerHTML = '<i class="fas fa-brain fa-spin mr-2"></i>AI is grading...';
