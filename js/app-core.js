@@ -565,48 +565,50 @@ window.app = {
             return;
         }
 
-        // Dynamically group the topic's questions into "Sub-topics" (Chunks of 5)
-        const chunkSize = 5;
-        const subTopics = [];
-        for (let i = 0; i < topicQuestions.length; i += chunkSize) {
-            const chunk = topicQuestions.slice(i, i + chunkSize);
-            subTopics.push({
-                id: `sub_${i}`,
-                name: `Sub-topic ${Math.floor(i/chunkSize) + 1} (Q${i+1} - Q${Math.min(i+chunkSize, topicQuestions.length)})`,
-                questionIds: chunk.map(q => q.id)
-            });
-        }
+        // 🌟 NEW LOGIC: Group by actual SubTopic names (e.g., "First Law & Energy")
+        const subTopicMap = {};
+        topicQuestions.forEach(q => {
+            const stName = q.subTopic || 'General';
+            if (!subTopicMap[stName]) {
+                subTopicMap[stName] = [];
+            }
+            subTopicMap[stName].push(q.id);
+        });
 
         let topicsHtml = `
             <p class="mb-2 text-sm font-bold text-gray-700"><i class="fas fa-layer-group mr-1"></i> Select Sub-topics & Quantity</p>
             <div class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border p-3 rounded bg-gray-50">`;
 
-        subTopics.forEach(st => {
-            const qCount = st.questionIds.length;
+        // Render a checkbox for each real SubTopic
+        let stIndex = 0;
+        for (const [stName, qIds] of Object.entries(subTopicMap)) {
+            const qCount = qIds.length;
+            const uniqueId = `sub_${stIndex++}`;
+            
             topicsHtml += `
                 <div class="flex flex-col gap-2 p-3 border rounded-lg bg-white hover:border-blue-300 transition shadow-sm">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <input type="checkbox" name="exam-topic" value="${st.id}" data-qids='${JSON.stringify(st.questionIds)}' class="topic-checkbox rounded text-blue-600 w-5 h-5 cursor-pointer">
-                        <span class="text-sm font-bold text-gray-800 flex-grow cursor-pointer" onclick="this.previousElementSibling.click()">${st.name}</span>
+                        <input type="checkbox" name="exam-topic" value="${uniqueId}" data-qids='${JSON.stringify(qIds)}' class="topic-checkbox rounded text-blue-600 w-5 h-5 cursor-pointer">
+                        <span class="text-sm font-bold text-gray-800 flex-grow cursor-pointer" onclick="this.previousElementSibling.click()">${stName}</span>
                     </div>
                     <div class="flex items-center gap-3 text-sm ml-7">
                         <span class="text-gray-500 text-xs"><i class="fas fa-database"></i> Available: <strong class="text-gray-700">${qCount}</strong></span>
                         <div class="flex items-center gap-2 ml-auto">
                             <label class="text-gray-600 text-xs">Take:</label>
                             <input type="number" class="topic-quantity w-16 border rounded px-2 py-1 text-center text-sm font-bold focus:border-blue-500"
-                                   data-sub-topic-id="${st.id}" min="0" max="${qCount}"
+                                   data-sub-topic-id="${uniqueId}" min="0" max="${qCount}"
                                    value="${qCount}" step="1">
                         </div>
                     </div>
                 </div>`;
-        });
+        }
         topicsHtml += `</div>`;
         container.innerHTML = topicsHtml;
 
         // Setup checkbox/quantity logic
         document.querySelectorAll('.topic-checkbox').forEach(checkbox => {
-            const subTopicId = checkbox.value;
-            const qtyInput = document.querySelector(`.topic-quantity[data-sub-topic-id="${subTopicId}"]`);
+            const uniqueId = checkbox.value;
+            const qtyInput = document.querySelector(`.topic-quantity[data-sub-topic-id="${uniqueId}"]`);
             if (!qtyInput) return;
             
             const updateQtyState = () => {
