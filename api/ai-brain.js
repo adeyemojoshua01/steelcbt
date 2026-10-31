@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'Groq API key missing in Vercel' });
 
     try {
-        const { studentAnswer, referenceAnswer, maxMarks, imageBase64, isImage, questionImageBase64 } = req.body;
+        const { studentAnswer, referenceAnswer, maxMarks, imageBase64, isImage } = req.body;
 
         const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
             headers: { 'Authorization': `Bearer ${apiKey}` }
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
         let prompt = '';
         let messages = [];
 
-        if (isImage || questionImageBase64) {
+        if (isImage && imageBase64) {
             // --- VISION MODE ---
             const knownVisionModels = [
                 'qwen/qwen3.8-27b', 'meta-models/muse-spark-open',
@@ -33,21 +33,24 @@ export default async function handler(req, res) {
                 Question Context (Admin's Answer): "${referenceAnswer}"
                 Maximum Marks: ${maxMarks}
 
-                ${questionImageBase64 ? "I have provided the question's diagram as the FIRST image, and the student's answer as the SECOND image." : "The student has uploaded an image of their handwritten answer."}
-                
+                The student has uploaded an image of their handwritten answer.
                 Please do two things:
-                1. Transcribe the handwritten text from the student's answer accurately.
-                2. Grade the student's transcribed answer fairly. If a question diagram is provided, use it to evaluate if the student's answer correctly references or uses the diagram.
+                1. Transcribe the handwritten text from the image accurately.
+                2. Grade the student's transcribed answer fairly based on the Admin's answer.
 
                 Return ONLY a valid JSON object.
-                {"score": (number from 0 to ${maxMarks}), "reason": "A brief explanation.", "transcription": "The exact text you read from the student's answer"}
+                {"score": (number from 0 to ${maxMarks}), "reason": "A brief explanation.", "transcription": "The exact text you read from the image"}
             `;
 
-            const contentArray = [{ type: "text", text: prompt }];
-            if (questionImageBase64) contentArray.push({ type: "image_url", image_url: { url: questionImageBase64 } });
-            if (imageBase64) contentArray.push({ type: "image_url", image_url: { url: imageBase64 } });
-
-            messages = [{ role: "user", content: contentArray }];
+            messages = [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: prompt },
+                        { type: "image_url", image_url: { url: imageBase64 } }
+                    ]
+                }
+            ];
 
         } else {
             // --- TEXT MODE ---
@@ -63,7 +66,6 @@ export default async function handler(req, res) {
                 Maximum Marks: ${maxMarks}
 
                 Grade the student's answer fairly based on the Admin's answer.
-                ${questionImageBase64 ? "Note: The question includes a diagram, which has been attached to this prompt." : ""}
 
                 Return ONLY a valid JSON object.
                 {"score": (number from 0 to ${maxMarks}), "reason": "A brief explanation."}
@@ -72,7 +74,7 @@ export default async function handler(req, res) {
             messages = [{ role: "user", content: prompt }];
         }
 
-        console.log(`Using model: ${chosenModel} | Mode: ${isImage || questionImageBase64 ? 'Vision' : 'Text'}`);
+        console.log(`Using model: ${chosenModel} | Mode: ${isImage ? 'Vision' : 'Text'}`);
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
