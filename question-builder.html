@@ -692,37 +692,68 @@
     }
     function handleImportPaste() { parseImportCode(document.getElementById('import-paste-area').value); }
 
-    function parseImportCode(codeText) {
+        function parseImportCode(codeText) {
       const resultBox = document.getElementById('import-parse-result'), summaryEl = document.getElementById('import-summary'), warningsEl = document.getElementById('import-warnings'), confirmBtn = document.getElementById('btn-confirm-import');
       if (!codeText.trim()) { resultBox.classList.add('hidden'); confirmBtn.disabled = true; return; }
+      
       try {
         let mockBanks = [];
         const execCode = `var window = { CBT_SUBJECT_BANKS: [] };\n${codeText}\nreturn window.CBT_SUBJECT_BANKS;`;
-        const parsedRaw = new Function(execCode)();
+        let parsedRaw;
+        
+        try {
+            parsedRaw = new Function(execCode)();
+        } catch (e) {
+            // If it's raw text (not wrapped in JS), just treat it as one big string
+            parsedRaw = [codeText];
+        }
+
         if (!Array.isArray(parsedRaw) || parsedRaw.length === 0) throw new Error("No valid bank data found.");
 
         const parsedSubjects = [], warnings = [];
+        
         parsedRaw.forEach((rawBank) => {
           let subName = "Imported Subject", topicsMap = {};
+          
           if (typeof rawBank === 'string') {
             const lines = rawBank.split('\n');
             let currentSubject = "Imported Subject", currentTopic = "General", currentQ = null;
+            
             lines.forEach(line => {
               const trimmed = line.trim();
+              if (!trimmed) return;
+
+              // Smart Recovery: If a line doesn't start with a known tag, and we don't have a subject yet,
+              // assume it's the Subject name (e.g. "Bible Quiz")
+              const knownTags = ['Subject:', 'Topic:', 'SubTopic:', 'Type:', 'Q', 'Option:', 'Answer:', 'Correct:', 'Explanation:', 'Marks:', 'MaxMarks:'];
+              const isKnownTag = knownTags.some(tag => trimmed.startsWith(tag));
+              
+              if (!isKnownTag && !currentQ && currentSubject === "Imported Subject" && !trimmed.match(/^Q\d+:/)) {
+                  currentSubject = trimmed; // Auto-assign it as the subject!
+                  return;
+              }
+
               if (trimmed.startsWith('Subject:')) currentSubject = trimmed.replace('Subject:', '').trim();
               else if (trimmed.startsWith('Topic:')) currentTopic = trimmed.replace('Topic:', '').trim();
+              else if (trimmed.startsWith('SubTopic:')) {
+                  if (currentQ) currentQ.subTopic = trimmed.replace('SubTopic:', '').trim();
+              }
               else if (trimmed.startsWith('Type:')) {
                 if (currentQ) { if (!topicsMap[currentTopic]) topicsMap[currentTopic] = []; topicsMap[currentTopic].push(currentQ); }
                 currentQ = { id: createId('q'), type: trimmed.replace('Type:', '').trim(), subTopic: "", question: "", options: [], correct: "A", explanation: "" };
-              } else if (trimmed.startsWith('SubTopic:')) currentQ.subTopic = trimmed.replace('SubTopic:', '').trim();
-              else if (trimmed.match(/^Q\d+:/)) currentQ.question = trimmed.replace(/^Q\d+:/, '').trim();
-              else if (trimmed.startsWith('Option:')) currentQ.options.push(trimmed.replace('Option:', '').trim().replace(/^[A-D]:\s*/, ''));
-              else if (trimmed.startsWith('Answer:') || trimmed.startsWith('Correct:')) currentQ.correct = trimmed.replace(/^(Answer|Correct):/, '').trim();
-              else if (trimmed.startsWith('Explanation:')) currentQ.explanation = trimmed.replace('Explanation:', '').trim();
+              } 
+              else if (trimmed.match(/^Q\d+:/)) {
+                  if (currentQ) currentQ.question = trimmed.replace(/^Q\d+:/, '').trim();
+              }
+              else if (trimmed.startsWith('Option:') && currentQ) currentQ.options.push(trimmed.replace('Option:', '').trim().replace(/^[A-D]:\s*/, ''));
+              else if ((trimmed.startsWith('Answer:') || trimmed.startsWith('Correct:')) && currentQ) currentQ.correct = trimmed.replace(/^(Answer|Correct):/, '').trim();
+              else if (trimmed.startsWith('Explanation:') && currentQ) currentQ.explanation = trimmed.replace('Explanation:', '').trim();
             });
+            
             if (currentQ) { if (!topicsMap[currentTopic]) topicsMap[currentTopic] = []; topicsMap[currentTopic].push(currentQ); }
             subName = currentSubject;
           }
+          
           const topics = [];
           Object.keys(topicsMap).forEach(tName => topics.push({ id: createId('top'), name: tName, questions: topicsMap[tName] }));
           parsedSubjects.push({ id: createId('sub'), name: subName, duration: 30, topics: topics });
@@ -731,6 +762,8 @@
         pendingImportData = parsedSubjects;
         summaryEl.textContent = `Parsed: ${parsedSubjects.length} subjects`;
         warningsEl.innerHTML = ""; resultBox.classList.remove('hidden'); confirmBtn.disabled = false;
+        document.getElementById('import-summary').className = "font-semibold text-brand-light";
+        
       } catch (err) {
         summaryEl.textContent = `Error: ${err.message}`; summaryEl.className = "font-semibold text-rose";
         warningsEl.innerHTML = `<div>Check bank code format.</div>`; resultBox.classList.remove('hidden'); confirmBtn.disabled = true;
