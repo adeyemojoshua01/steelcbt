@@ -392,44 +392,91 @@ window.app = {
     },
 
     // --------------------------------------------------------
-    // CANDIDATE FLOW
+    // CANDIDATE FLOW (Subject List -> Mode -> Login -> Sub-topics)
     // --------------------------------------------------------
     showCandidateOptions: function () {
         this.data.mode = 'candidate-options';
         this.updateHeader();
-
-        document.getElementById('app-container').innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full p-4">
-                <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
-                    <i class="fas fa-user-graduate text-5xl text-blue-600 mb-4"></i>
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Select Exam Mode</h2>
-                    <div class="space-y-4">
-                        <button onclick="event.preventDefault(); app.showCandidateLogin('practice')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition flex items-center justify-center gap-3">
-                            <i class="fas fa-clock"></i><span>Practice Mode (Timed)</span>
-                        </button>
-                        <button onclick="event.preventDefault(); app.showCandidateLogin('study')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg transition flex items-center justify-center gap-3">
-                            <i class="fas fa-book-open"></i><span>Study Mode (Learn with Explanations)</span>
-                        </button>
-                    </div>
-                    <div class="mt-6 text-sm text-gray-500">
-                        <p><i class="fas fa-info-circle mr-1"></i> Practice: Timed exam, results at the end</p>
-                        <p class="mt-1"><i class="fas fa-info-circle mr-1"></i> Study: Click on your answer to see correct answer & explanation</p>
-                    </div>
-                    <button onclick="event.preventDefault(); app.showLanding()" class="mt-6 text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-arrow-left mr-1"></i> Back
-                    </button>
-                </div>
-            </div>`;
-    },
-
-    showCandidateLogin: function (mode) {
-        this.data.examMode = mode;
         const subjects = Object.values(this.data.subjects);
 
         if (subjects.length === 0) {
             this.showNotification('No subjects available.', 'error');
+            this.showLanding();
             return;
         }
+
+        document.getElementById('app-container').innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-full py-6 px-4">
+                <div class="text-center mb-8">
+                    <i class="fas fa-book-open text-6xl text-blue-600 mb-4"></i>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Select a Subject</h2>
+                    <p class="text-gray-600">Choose the subject you want to be examined on</p>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
+                    ${subjects.map(subj => `
+                        <button onclick="event.preventDefault(); app.showModeSelection('${subj.id}')" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition border text-left flex items-center gap-4">
+                            <div class="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center group-hover:bg-blue-200 shrink-0 transition">
+                                <i class="fas fa-graduation-cap text-2xl text-blue-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800 line-clamp-2">${subj.name}</h3>
+                                <p class="text-sm text-gray-500 mt-1"><i class="fas fa-database text-xs mr-1"></i> ${subj.questions.length} questions available</p>
+                            </div>
+                        </button>
+                    `).join('')}
+                </div>
+                
+                <button onclick="event.preventDefault(); app.showLanding()" class="mt-8 text-gray-500 hover:text-gray-800 transition">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Home
+                </button>
+            </div>`;
+    },
+
+    showModeSelection: function (subjectId) {
+        this.data.currentSubjectId = subjectId;
+        const subject = this.data.subjects[subjectId];
+        if (!subject) return;
+
+        this.data.mode = 'mode-selection';
+        this.updateHeader();
+
+        document.getElementById('app-container').innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-full py-6 px-4">
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+                    <div class="flex items-center gap-2 mb-4 text-left">
+                        <button onclick="event.preventDefault(); app.showCandidateOptions()" class="text-gray-500 hover:text-gray-700 p-2">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h2 class="text-2xl font-bold text-gray-800 flex-grow">Select Exam Mode</h2>
+                    </div>
+
+                    <div class="mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <p class="text-xs text-blue-500 uppercase font-bold tracking-wider mb-1">Selected Subject</p>
+                        <p class="text-lg font-bold text-blue-900 line-clamp-2">${subject.name}</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <button onclick="event.preventDefault(); app.showCandidateLogin('practice', '${subjectId}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition flex items-center justify-center gap-3">
+                            <i class="fas fa-clock"></i><span>Practice Mode (Timed)</span>
+                        </button>
+                        <button onclick="event.preventDefault(); app.showCandidateLogin('study', '${subjectId}')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg transition flex items-center justify-center gap-3">
+                            <i class="fas fa-book-open"></i><span>Study Mode (Learn with Explanations)</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-6 text-sm text-gray-500 text-left space-y-2 bg-gray-50 p-4 rounded-lg">
+                        <p><i class="fas fa-info-circle mr-1 text-blue-500"></i> <strong>Practice:</strong> Timed exam, results at the end.</p>
+                        <p><i class="fas fa-info-circle mr-1 text-green-500"></i> <strong>Study:</strong> Click your answer to reveal the correct answer & explanation.</p>
+                    </div>
+                </div>
+            </div>`;
+    },
+
+    showCandidateLogin: function (mode, subjectId) {
+        this.data.examMode = mode;
+        this.data.currentSubjectId = subjectId;
+        const subject = this.data.subjects[subjectId];
 
         const customDurationHtml = mode === 'practice' ? `
             <div class="mb-4">
@@ -438,7 +485,7 @@ window.app = {
                     Custom Exam Duration (minutes)
                 </label>
                 <input type="number" id="custom-duration-input" class="w-full border rounded-lg p-3"
-                       placeholder="Leave empty to use subject default (${subjects[0]?.duration || 30} min)"
+                       placeholder="Leave empty to use default (${subject.duration || 30} min)"
                        min="1" max="999" step="1">
                 <p class="text-xs text-gray-500 mt-1">Enter any number between 1 and 999 minutes</p>
             </div>` : '';
@@ -447,38 +494,46 @@ window.app = {
             <div class="flex flex-col items-center justify-center min-h-full py-6 px-2">
                 <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg w-full max-w-md border-t-4 ${mode === 'practice' ? 'border-blue-600' : 'border-green-600'}">
                     <div class="flex items-center gap-2 mb-4">
-                        <button onclick="event.preventDefault(); app.showCandidateOptions()" class="text-gray-500 hover:text-gray-700">
+                        <button onclick="event.preventDefault(); app.showModeSelection('${subjectId}')" class="text-gray-500 hover:text-gray-700 p-2">
                             <i class="fas fa-arrow-left"></i>
                         </button>
                         <h2 class="text-2xl font-bold text-center text-gray-800 flex-grow">Candidate Login</h2>
                     </div>
-                    <div class="mb-4 text-center">
-                        <span class="inline-block px-4 py-1 rounded-full text-sm font-bold ${mode === 'practice' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                    
+                    <div class="mb-5 text-center">
+                        <div class="text-lg font-bold text-gray-800 line-clamp-2">${subject.name}</div>
+                        <span class="inline-block mt-2 px-4 py-1 rounded-full text-sm font-bold ${mode === 'practice' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
                             <i class="fas ${mode === 'practice' ? 'fa-clock' : 'fa-book-open'} mr-1"></i>
-                            ${mode === 'practice' ? 'Practice Mode (Timed)' : 'Study Mode (Click answers to reveal)'}
+                            ${mode === 'practice' ? 'Practice Mode' : 'Study Mode'}
                         </span>
                     </div>
+
                     <form id="candidate-login-form">
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2 font-medium">Full Name</label>
-                            <input type="text" id="candidate-name" class="w-full border rounded-lg p-3" placeholder="Enter your name" required>
+                            <input type="text" id="candidate-name" class="w-full border rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Enter your name" required>
                         </div>
+
+                        <!-- TOPIC LIST (Dropdown) -->
                         <div class="mb-4">
-                            <label class="block text-gray-700 mb-2 font-medium">Select Subject</label>
-                            <select id="exam-subject" onchange="app.renderCandidateTopics()" class="w-full border rounded-lg p-3">
-                                ${subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                            <label class="block text-gray-700 mb-2 font-medium"><i class="fas fa-bookmark mr-1 text-blue-500"></i> Select Topic</label>
+                            <select id="exam-topic-select" onchange="app.renderCandidateSubTopics()" class="w-full border rounded-lg p-3">
+                                ${subject.topics.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
                             </select>
                         </div>
+                        
                         ${customDurationHtml}
+                        
+                        <!-- SUB-TOPIC LIST (Checkboxes dynamically generated) -->
                         <div id="candidate-topics-container" class="mb-6"></div>
+                        
                         <div class="bg-blue-50 p-4 rounded mb-6 text-sm text-blue-800">
                             <p class="font-bold mb-1"><i class="fas fa-info-circle"></i> Instructions:</p>
-                            <ul class="list-disc list-inside">
+                            <ul class="list-disc list-inside space-y-1">
                                 <li>${mode === 'practice' ? 'You can set a custom time limit above' : 'No time limit - learn at your own pace'}</li>
                                 ${mode === 'study' ? '<li class="text-green-700 font-bold">Click on your chosen answer to see correct answer and explanation!</li>' : ''}
                                 <li>Don't refresh the browser</li>
-                                <li>Reference images are available during exam</li>
-                                <li>Click the <i class="fas fa-book-open"></i> or <i class="fas fa-images"></i> icons next to topics to view study materials</li>
+                                <li>Reference images and notes are available during exam</li>
                             </ul>
                         </div>
                         <button type="submit" class="w-full ${mode === 'practice' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-3 rounded-lg transition">
@@ -492,43 +547,55 @@ window.app = {
             e.preventDefault();
             this.startTestPrep();
         });
-        setTimeout(() => this.renderCandidateTopics(), 0);
+        
+        setTimeout(() => this.renderCandidateSubTopics(), 0);
     },
 
-    renderCandidateTopics: function () {
-        const subjEl = document.getElementById('exam-subject');
-        if (!subjEl) return;
-        const subj = this.data.subjects[subjEl.value];
+    renderCandidateSubTopics: function () {
+        const subj = this.data.subjects[this.data.currentSubjectId];
+        const topicSelect = document.getElementById('exam-topic-select');
+        if (!subj || !topicSelect) return;
+        
+        const selectedTopicId = topicSelect.value;
         const container = document.getElementById('candidate-topics-container');
-        if (!subj?.topics || subj.topics.length <= 1) {
-            container.innerHTML = '';
+        const topicQuestions = subj.questions.filter(q => q.topicId === selectedTopicId);
+
+        if (topicQuestions.length === 0) {
+            container.innerHTML = '<div class="text-sm text-red-500 text-center py-2 bg-red-50 rounded border border-red-200">No questions available for this topic.</div>';
             return;
         }
 
-        let topicsHtml = `
-            <p class="mb-2 text-sm font-bold text-gray-700">Select Topics & Choose Number of Questions</p>
-            <div class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border p-3 rounded bg-white">`;
+        // Dynamically group the topic's questions into "Sub-topics" (Chunks of 5)
+        const chunkSize = 5;
+        const subTopics = [];
+        for (let i = 0; i < topicQuestions.length; i += chunkSize) {
+            const chunk = topicQuestions.slice(i, i + chunkSize);
+            subTopics.push({
+                id: `sub_${i}`,
+                name: `Sub-topic ${Math.floor(i/chunkSize) + 1} (Q${i+1} - Q${Math.min(i+chunkSize, topicQuestions.length)})`,
+                questionIds: chunk.map(q => q.id)
+            });
+        }
 
-        subj.topics.forEach(topic => {
-            const questionCount = subj.questions.filter(q => q.topicId === topic.id).length;
-            const hasNote   = subj.notes && subj.notes[topic.id] && subj.notes[topic.id].trim() !== '';
-            const hasImages = subj.topicImages && subj.topicImages[topic.id] && subj.topicImages[topic.id].length > 0;
+        let topicsHtml = `
+            <p class="mb-2 text-sm font-bold text-gray-700"><i class="fas fa-layer-group mr-1"></i> Select Sub-topics & Quantity</p>
+            <div class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border p-3 rounded bg-gray-50">`;
+
+        subTopics.forEach(st => {
+            const qCount = st.questionIds.length;
             topicsHtml += `
-                <div class="flex flex-col gap-2 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100">
+                <div class="flex flex-col gap-2 p-3 border rounded-lg bg-white hover:border-blue-300 transition shadow-sm">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <input type="checkbox" name="exam-topic" value="${topic.id}" class="topic-checkbox rounded text-green-600 w-5 h-5">
-                        <span class="text-sm font-bold text-gray-800 flex-grow">${topic.name}</span>
-                        ${hasNote ? `<button type="button" onclick="event.preventDefault(); app.viewTopicNote('${subj.id}', '${topic.id}', '${topic.name}')" class="text-blue-500 hover:text-blue-700" title="View notes"><i class="fas fa-book-open"></i></button>` : ''}
-                        ${hasImages ? `<button type="button" onclick="event.preventDefault(); app.viewTopicImages('${subj.id}', '${topic.id}')" class="text-purple-500 hover:text-purple-700" title="View images"><i class="fas fa-images"></i></button>` : ''}
+                        <input type="checkbox" name="exam-topic" value="${st.id}" data-qids='${JSON.stringify(st.questionIds)}' class="topic-checkbox rounded text-blue-600 w-5 h-5 cursor-pointer">
+                        <span class="text-sm font-bold text-gray-800 flex-grow cursor-pointer" onclick="this.previousElementSibling.click()">${st.name}</span>
                     </div>
-                    <div class="flex items-center gap-3 text-sm ml-6">
-                        <span class="text-gray-600"><i class="fas fa-database"></i> Available: <strong class="text-green-700">${questionCount}</strong> questions</span>
-                        <div class="flex items-center gap-2">
-                            <label class="text-gray-600">Take:</label>
-                            <input type="number" class="topic-quantity w-20 border rounded px-2 py-1 text-center text-sm"
-                                   data-topic-id="${topic.id}" min="0" max="${questionCount}"
-                                   value="${questionCount}" step="1" ${questionCount === 0 ? 'disabled' : ''}>
-                            <span class="text-xs text-gray-500">questions</span>
+                    <div class="flex items-center gap-3 text-sm ml-7">
+                        <span class="text-gray-500 text-xs"><i class="fas fa-database"></i> Available: <strong class="text-gray-700">${qCount}</strong></span>
+                        <div class="flex items-center gap-2 ml-auto">
+                            <label class="text-gray-600 text-xs">Take:</label>
+                            <input type="number" class="topic-quantity w-16 border rounded px-2 py-1 text-center text-sm font-bold focus:border-blue-500"
+                                   data-sub-topic-id="${st.id}" min="0" max="${qCount}"
+                                   value="${qCount}" step="1">
                         </div>
                     </div>
                 </div>`;
@@ -536,10 +603,12 @@ window.app = {
         topicsHtml += `</div>`;
         container.innerHTML = topicsHtml;
 
+        // Setup checkbox/quantity logic
         document.querySelectorAll('.topic-checkbox').forEach(checkbox => {
-            const topicId = checkbox.value;
-            const qtyInput = document.querySelector(`.topic-quantity[data-topic-id="${topicId}"]`);
+            const subTopicId = checkbox.value;
+            const qtyInput = document.querySelector(`.topic-quantity[data-sub-topic-id="${subTopicId}"]`);
             if (!qtyInput) return;
+            
             const updateQtyState = () => {
                 if (checkbox.checked) {
                     qtyInput.disabled = false;
@@ -552,6 +621,7 @@ window.app = {
                     qtyInput.value = 0;
                 }
             };
+            
             checkbox.addEventListener('change', updateQtyState);
             qtyInput.addEventListener('input', function () {
                 let val = parseInt(this.value);
@@ -573,14 +643,12 @@ window.app = {
     },
 
     startTestPrep: function () {
-        const nameInput    = document.getElementById('candidate-name');
-        const subjectInput = document.getElementById('exam-subject');
-
+        const nameInput = document.getElementById('candidate-name');
         if (nameInput) this.data.candidateName = nameInput.value;
-        if (!subjectInput) { this.showNotification('No subject selected.', 'error'); return; }
-
-        const subject = this.data.subjects[subjectInput.value];
-        this.data.currentSubjectId = subjectInput.value;
+        
+        const subjectId = this.data.currentSubjectId;
+        if (!subjectId) { this.showNotification('No subject selected.', 'error'); return; }
+        const subject = this.data.subjects[subjectId];
 
         let customDurationMinutes = null;
         if (this.data.examMode === 'practice') {
@@ -593,43 +661,39 @@ window.app = {
             }
         }
 
-        const selectedTopics = [];
-        const topicQuantityMap = {};
+        let questionsToUse = [];
+        let hasSelection = false;
+        
+        // Read the checked Sub-topics
         document.querySelectorAll('input[name="exam-topic"]:checked').forEach(cb => {
-            const topicId = cb.value;
-            const qtyInput = document.querySelector(`.topic-quantity[data-topic-id="${topicId}"]`);
+            hasSelection = true;
+            const qIds = JSON.parse(cb.dataset.qids);
+            const subTopicId = cb.value;
+            const qtyInput = document.querySelector(`.topic-quantity[data-sub-topic-id="${subTopicId}"]`);
             let qty = qtyInput ? parseInt(qtyInput.value) : 0;
             if (isNaN(qty) || qty < 0) qty = 0;
-            if (qty > 0) {
-                selectedTopics.push(topicId);
-                topicQuantityMap[topicId] = qty;
+            
+            // Get questions for this sub-topic, shuffle, and slice
+            const subTopicQuestions = subject.questions.filter(q => qIds.includes(q.id));
+            const shuffled = [...subTopicQuestions];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
+            questionsToUse.push(...shuffled.slice(0, qty));
         });
 
-        let questionsToUse = [];
-        if (selectedTopics.length === 0) {
+        // If they didn't check any sub-topics, default to the whole subject
+        if (!hasSelection) {
             questionsToUse = [...subject.questions];
-        } else {
-            for (let topicId of selectedTopics) {
-                const topicQuestions = subject.questions.filter(q => q.topicId === topicId);
-                const requested = topicQuantityMap[topicId];
-                if (topicQuestions.length === 0) continue;
-                const numberOfQuestions = Math.min(requested, topicQuestions.length);
-                if (numberOfQuestions <= 0) continue;
-                const shuffled = [...topicQuestions];
-                for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                }
-                questionsToUse.push(...shuffled.slice(0, numberOfQuestions));
-            }
         }
 
         if (questionsToUse.length === 0) {
-            this.showNotification("No questions available.", "error");
+            this.showNotification("No questions available. Please select at least one sub-topic.", "error");
             return;
         }
 
+        // Shuffle the final combined array
         for (let i = questionsToUse.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [questionsToUse[i], questionsToUse[j]] = [questionsToUse[j], questionsToUse[i]];
@@ -640,11 +704,6 @@ window.app = {
             ? (customDurationMinutes !== null ? customDurationMinutes : subject.duration)
             : this.data.examDuration;
 
-        if (this.data.questions.length === 0) {
-            this.showNotification("No questions set.", "error");
-            return;
-        }
-
         this.data.currentQuestionIndex = 0;
         this.data.userAnswers = {};
         this.data.answerRevealed = {};
@@ -653,7 +712,7 @@ window.app = {
 
         if (this.data.examMode === 'practice') {
             this.data.timeLeft = this.data.examDuration * 60;
-            this.startTimer();           // defined in app-exam.js
+            this.startTimer();
         } else {
             this.data.timeLeft = 0;
         }
@@ -662,7 +721,7 @@ window.app = {
         document.body.style.overflow = 'hidden';
         document.documentElement.style.overflow = 'hidden';
 
-        this.showTestInterface();        // defined in app-exam.js
+        this.showTestInterface();
     },
 
     // --------------------------------------------------------
