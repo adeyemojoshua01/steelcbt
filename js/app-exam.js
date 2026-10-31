@@ -118,6 +118,7 @@ Object.assign(window.app, {
 
         if (q.type === 'theory') {
             const alreadyGraded = this.data.answerRevealed[q.id];
+            const isImageAnswer = userAnswer && String(userAnswer).startsWith('data:image');
             let theoryFeedback = '';
 
             if (alreadyGraded && typeof alreadyGraded === 'object' && alreadyGraded.score !== undefined) {
@@ -137,19 +138,19 @@ Object.assign(window.app, {
 
             answerArea = `
                 <div class="max-w-2xl">
-                    <!-- Toggle Buttons -->
+                                        <!-- Toggle Buttons -->
                     <div class="flex gap-2 mb-4" id="theory-tabs-${q.id}">
-                        <button type="button" onclick="app.toggleTheoryTab('${q.id}', 'text')" class="flex-1 py-2 rounded-lg font-bold border-2 bg-green-50 border-green-500 text-green-700" id="tab-text-${q.id}">
+                        <button type="button" onclick="app.toggleTheoryTab('${q.id}', 'text')" class="flex-1 py-2 rounded-lg font-bold border-2 ${(!isImageAnswer && !alreadyGraded) ? 'bg-green-50 border-green-500 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-500'}" id="tab-text-${q.id}">
                             <i class="fas fa-keyboard mr-1"></i> Type Answer
                         </button>
-                        <button type="button" onclick="app.toggleTheoryTab('${q.id}', 'image')" class="flex-1 py-2 rounded-lg font-bold border-2 bg-gray-50 border-gray-300 text-gray-500" id="tab-image-${q.id}">
+                        <button type="button" onclick="app.toggleTheoryTab('${q.id}', 'image')" class="flex-1 py-2 rounded-lg font-bold border-2 ${(isImageAnswer || alreadyGraded) ? 'bg-green-50 border-green-500 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-500'}" id="tab-image-${q.id}">
                             <i class="fas fa-camera mr-1"></i> Upload Photo
                         </button>
                     </div>
 
                     <!-- Text Input Area -->
-                    <div id="theory-text-container-${q.id}" class="${alreadyGraded ? 'hidden' : ''}">
-                        <textarea id="theory-text-input-${q.id}" rows="5" class="w-full p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 text-lg" placeholder="Type your theory answer here..." ${alreadyGraded ? 'disabled' : ''}>${userAnswer || ''}</textarea>
+                    <div id="theory-text-container-${q.id}" class="${(!isImageAnswer && !alreadyGraded) ? '' : 'hidden'}">
+                        <textarea id="theory-text-input-${q.id}" rows="5" class="w-full p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 text-lg" placeholder="Type your theory answer here..." ${alreadyGraded ? 'disabled' : ''}>${(!isImageAnswer && userAnswer) ? userAnswer : ''}</textarea>
 
                         <button onclick="app.submitTheoryText('${q.id}')" id="submit-text-btn-${q.id}"
                                 class="mt-2 w-full ${this.data.examMode === 'practice' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white px-6 py-3 rounded-lg font-bold transition">
@@ -159,15 +160,15 @@ Object.assign(window.app, {
                     </div>
 
                     <!-- Image Input Area -->
-                    <div id="theory-image-container-${q.id}" class="hidden">
+                    <div id="theory-image-container-${q.id}" class="${(isImageAnswer || alreadyGraded) ? '' : 'hidden'}">
                         <input type="file" id="theory-image-input-${q.id}" accept="image/*"
                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 mb-2"
                                ${alreadyGraded ? 'disabled' : ''}>
-                        <div id="image-preview-container-${q.id}" class="mt-2 hidden">
-                            <img id="theory-image-preview-${q.id}" src="" class="max-h-60 rounded-lg border shadow-md mb-2 w-full object-contain" />
+                        <div id="image-preview-container-${q.id}" class="mt-2 ${isImageAnswer ? '' : 'hidden'}">
+                            <img id="theory-image-preview-${q.id}" src="${isImageAnswer ? userAnswer : ''}" class="max-h-60 rounded-lg border shadow-md mb-2 w-full object-contain" />
                             <button onclick="app.submitTheoryImage('${q.id}')" id="submit-image-btn-${q.id}"
                                     class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition">
-                                <i class="fas fa-magic mr-2"></i>Submit for AI Grading
+                                <i class="fas fa-magic mr-2"></i>${this.data.examMode === 'practice' ? 'Save Image' : 'Submit for AI Grading'}
                             </button>
                         </div>
                     </div>
@@ -175,7 +176,7 @@ Object.assign(window.app, {
                     ${theoryFeedback}
                 </div>`;
 
-            setTimeout(() => {
+                        setTimeout(() => {
                 const input = document.getElementById(`theory-image-input-${q.id}`);
                 if (input) {
                     input.addEventListener('change', (e) => {
@@ -185,6 +186,9 @@ Object.assign(window.app, {
                             reader.onload = (event) => {
                                 document.getElementById(`theory-image-preview-${q.id}`).src = event.target.result;
                                 document.getElementById(`image-preview-container-${q.id}`).classList.remove('hidden');
+                                // Reset button text if they choose a new image in practice mode
+                                const btn = document.getElementById(`submit-image-btn-${q.id}`);
+                                if (btn) btn.innerHTML = `<i class="fas fa-magic mr-2"></i>${app.data.examMode === 'practice' ? 'Save Image' : 'Submit for AI Grading'}`;
                             };
                             reader.readAsDataURL(file);
                         }
