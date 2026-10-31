@@ -317,9 +317,22 @@
       });
     }
 
-    function selectPath(subjectId, topicId, questionId) {
-      selectedPath = { subjectId, topicId, questionId }; renderApp();
-      if (window.innerWidth < 768) { document.getElementById('sidebar').classList.add('-translate-x-full'); document.getElementById('sidebar-backdrop').classList.add('hidden'); }
+        function selectPath(subjectId, topicId, questionId) {
+      selectedPath = { subjectId, topicId, questionId };
+      renderApp();
+      
+      // 🌟 NEW: Save this navigation step to the phone's history
+      history.pushState({ subjectId, topicId, questionId }, '', '#editor');
+
+      // Auto-close sidebar on mobile when an item is selected
+      if (window.innerWidth < 768) {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (!sidebar.classList.contains('-translate-x-full')) {
+          sidebar.classList.add('-translate-x-full');
+          backdrop.classList.add('hidden');
+        }
+      }
     }
 
     function renderBreadcrumb() {
@@ -976,6 +989,31 @@
         showToast(err.message, 'error');
       }
     }
+
+
+      /* ==========================================================================
+       MOBILE BACK BUTTON NAVIGATION
+       ========================================================================== */
+    window.addEventListener('popstate', (e) => {
+      // If the app is currently in the editor
+      if (selectedPath) {
+        const state = e.state;
+        
+        // If there's state, restore it
+        if (state && state.subjectId) {
+          selectedPath = { subjectId: state.subjectId, topicId: state.topicId, questionId: state.questionId };
+          renderApp();
+        } else {
+          // If no state exists (they pressed back from the first subject), go back to the empty view
+          selectedPath = null;
+          renderApp();
+        }
+      }
+    });
+
+    // Seed the initial history state when the app loads
+    history.replaceState(null, '', '#builder');
+
     
   </script>
 
