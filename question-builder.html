@@ -763,23 +763,44 @@
       document.getElementById('export-filename').value = `${slug}-bank.js`; updateExportPreview();
     }
 
-    function generateExportJSCode(shuffle = false) {
+        function generateExportJSCode(shuffle = false) {
       let code = `window.CBT_SUBJECT_BANKS = window.CBT_SUBJECT_BANKS || [];\n\n`;
+      
+      // Helper function to double backslashes for LaTeX
+      const fixMath = (str) => {
+        if (!str) return '';
+        return String(str).replace(/\\/g, '\\\\');
+      };
+
       appData.subjects.forEach(sub => {
         let text = `Subject: ${sub.name}\n\n`;
         sub.topics.forEach(top => {
           top.questions.forEach((q, idx) => {
             const exportQ = JSON.parse(JSON.stringify(q));
             if (shuffle && exportQ.type === 'MCQ') shuffleOptionsHelper(exportQ);
+            
             text += `Topic: ${top.name}\n`;
-            // 🌟 NEW: Export SubTopic
-            if (exportQ.subTopic) text += `SubTopic: ${exportQ.subTopic}\n`;
+            if (exportQ.subTopic) text += `SubTopic: ${fixMath(exportQ.subTopic)}\n`;
             text += `Type: ${exportQ.type}\n`;
-            text += `Q${String(idx + 1).padStart(3, '0')}: ${exportQ.question}\n`;
-            if (exportQ.type === 'MCQ') { exportQ.options.forEach((opt, i) => text += `Option: ${['A','B','C','D'][i]}: ${opt}\n`); text += `Answer: ${exportQ.correct}\n`; }
-            else if (exportQ.type === 'Fill') text += `Answer: ${exportQ.correct}\n`;
+            
+            // Fix Math for Question
+            text += `Q${String(idx + 1).padStart(3, '0')}: ${fixMath(exportQ.question)}\n`;
+            
+            if (exportQ.type === 'MCQ') { 
+              exportQ.options.forEach((opt, i) => {
+                // Fix Math for Options
+                text += `Option: ${['A','B','C','D'][i]}: ${fixMath(opt)}\n`; 
+              }); 
+              text += `Answer: ${exportQ.correct}\n`; 
+            }
+            else if (exportQ.type === 'Fill') {
+              // Fix Math for Fill answers
+              text += `Answer: ${fixMath(exportQ.correct)}\n`;
+            }
             else if (exportQ.type === 'Theory') text += `MaxMarks: ${exportQ.maxMarks || 10}\n`;
-            if (exportQ.explanation) text += `Explanation: ${exportQ.explanation}\n`;
+            
+            // Fix Math for Explanation
+            if (exportQ.explanation) text += `Explanation: ${fixMath(exportQ.explanation)}\n`;
             text += `\n`;
           });
         });
