@@ -10,21 +10,54 @@ Object.assign(window.app, {
     // --------------------------------------------------------
     // THEORY: TEXT SUBMISSION
     // --------------------------------------------------------
-    submitTheoryText: async function (qId) {
-        const textarea = document.getElementById(`theory-text-input-${qId}`);
-        const answerText = textarea.value.trim();
-        if (!answerText) {
-            this.showNotification("Please type an answer before saving.", "warning");
-            return;
-        }
+        // --------------------------------------------------------
+    // THEORY: IMAGE SUBMISSION
+    // --------------------------------------------------------
+    submitTheoryImage: async function (qId) {
+        const fileInput = document.getElementById(`theory-image-input-${qId}`);
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        // 🛡️ RACE CONDITION GUARD
+        // Create a unique timestamp for this specific upload attempt
+        const requestTimestamp = Date.now();
+        this._lastImageRequest = this._lastImageRequest || {};
+        this._lastImageRequest[qId] = requestTimestamp;
 
         const q = this.data.questions.find(q => String(q.id) === String(qId));
         if (!q) return;
 
-        this.data.userAnswers[String(q.id)] = answerText;
+        const btn = document.getElementById(`submit-image-btn-${qId}`);
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing Image...';
+        btn.disabled = true;
 
-        // PRACTICE MODE: Save without grading
-                // 2. PRACTICE MODE: Save the compressed Base64 string
+        // 1. COMPRESS the image first
+        let imageBase64 = null;
+        try {
+            const compressedFile = await compressImage(file, 1000, 1000, 0.7);
+
+            // 🛑 CHECK: If the user selected another file while we were compressing, abort this one.
+            if (this._lastImageRequest[qId] !== requestTimestamp) return;
+
+            const reader = new FileReader();
+            imageBase64 = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(compressedFile);
+            });
+
+            // 🛑 CHECK AGAIN: Just in case they clicked again while reading the file
+            if (this._lastImageRequest[qId] !== requestTimestamp) return;
+
+        } catch (err) {
+            this.showNotification("Error processing image file.", "error");
+            // Reset button correctly based on mode
+            btn.innerHTML = `<i class="fas fa-magic mr-2"></i>${this.data.examMode === 'practice' ? 'Save Image' : 'Submit for AI Grading'}`;
+            btn.disabled = false;
+            return;
+        }
+
+        // 2. PRACTICE MODE: Save the compressed Base64 string
         if (this.data.examMode === 'practice') {
             this.data.userAnswers[String(q.id)] = imageBase64;
             this.saveExamState();
@@ -36,40 +69,47 @@ Object.assign(window.app, {
             // Reset button after 2 seconds so they know they can save again
             setTimeout(() => {
                 const currentBtn = document.getElementById(`submit-image-btn-${qId}`);
-                if (currentBtn) {
-                    currentBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Image';
+                // Only reset if no new upload has started
+                if (currentBtn && this._lastImageRequest[qId] === requestTimestamp) {
+                    currentBtn.innerHTML = `<i class="fas fa-save mr-2"></i>Save Image`;
                 }
             }, 2000);
 
             return;
         }
-        // STUDY MODE: Grade immediately
-        const btn = document.getElementById(`submit-text-btn-${qId}`);
-        btn.innerHTML = '<i class="fas fa-brain fa-spin mr-2"></i>AI is grading...';
-        btn.disabled = true;
-        this.showNotification("AI is analyzing your answer...", "info");
+
+        // 3. STUDY MODE: Send compressed image to AI immediately
+        this.showNotification("AI is reading the handwriting from your image...", "info");
 
         try {
             const response = await fetch('/api/ai-brain', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    studentAnswer: answerText,
+                    imageBase64: imageBase64,
                     referenceAnswer: q.explanation || q.correct || "General knowledge",
-                    maxMarks: q.maxMarks || 10
+                    maxMarks: q.maxMarks || 10,
+                    isImage: true
                 })
             });
 
-            const result = await response.json();
-
-            if (!response.ok || result.score === undefined) {
-                throw new Error(result.error || "AI failed to return a score.");
+            const textResponse = await response.text();
+            let result;
+            try {
+                result = JSON.parse(textResponse);
+            } catch (e) {
+                throw new Error("Server error. The image might still be too large, or the AI is down.");
             }
 
+            if (!response.ok || result.score === undefined) {
+                throw new Error(result.error || "AI failed to grade.");
+            }
+
+            this.data.userAnswers[String(q.id)] = imageBase64;
             this.data.answerRevealed[String(q.id)] = {
                 isCorrect: result.score >= ((q.maxMarks || 10) * 0.4),
                 score: result.score,
-                explanation: `Model Answer:\n\n"${q.explanation}"\n\nAI Feedback: ${result.reason}`
+                explanation: `Model Answer:\n\n"${q.explanation}"\n\nAI Feedback: ${result.reason}\n\nAI Transcription: "${result.transcription || 'N/A'}"`
             };
 
             this.saveExamState();
@@ -78,13 +118,11 @@ Object.assign(window.app, {
 
         } catch (error) {
             console.error(error);
-            this.showNotification("AI Error: " + error.message, "error");
+            this.showNotification("Error: " + error.message, "error");
             btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Submit for AI Grading';
             btn.disabled = false;
-            btn.classList.remove('opacity-75', 'cursor-not-allowed');
         }
     },
-
     // --------------------------------------------------------
     // THEORY: IMAGE SUBMISSION
     // --------------------------------------------------------
