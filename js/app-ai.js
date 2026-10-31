@@ -30,8 +30,7 @@ Object.assign(window.app, {
                 body: JSON.stringify({
                     studentAnswer: answerText,
                     referenceAnswer: q.explanation || q.correct || "General knowledge",
-                    maxMarks: q.maxMarks || 10,
-                    questionImageBase64: q.image || null // 🌟 Pass Question Image
+                    maxMarks: q.maxMarks || 10
                 })
             });
 
@@ -101,8 +100,7 @@ Object.assign(window.app, {
                     imageBase64: imageBase64,
                     referenceAnswer: q.explanation || q.correct || "General knowledge",
                     maxMarks: q.maxMarks || 10,
-                    isImage: true,
-                    questionImageBase64: q.image || null // 🌟 Pass Question Image
+                    isImage: true
                 })
             });
 
@@ -138,8 +136,7 @@ Object.assign(window.app, {
                 try {
                     const bodyPayload = {
                         referenceAnswer: q.explanation || q.correct || "General knowledge",
-                        maxMarks: q.maxMarks || 10,
-                        questionImageBase64: q.image || null // 🌟 Pass Question Image
+                        maxMarks: q.maxMarks || 10
                     };
                     if (isImage) { bodyPayload.imageBase64 = userAns; bodyPayload.isImage = true; }
                     else { bodyPayload.studentAnswer = userAns; }
@@ -180,8 +177,7 @@ Object.assign(window.app, {
                 question: q.text, userAnswer: userAns || 'Not Answered',
                 correctAnswer: q.type === 'theory' ? `AI Grade: ${revealed && revealed.score !== undefined ? revealed.score : 0}/${maxMarks}` : q.correct,
                 isCorrect, questionType: q.type, options: q.options,
-                explanation: (q.type === 'theory' && revealed) ? revealed.explanation : q.explanation,
-                questionImage: q.image || null // 🌟 Save for review
+                explanation: (q.type === 'theory' && revealed) ? revealed.explanation : q.explanation
             });
         });
 
