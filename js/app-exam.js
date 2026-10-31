@@ -4,7 +4,6 @@
 // ============================================================
 
 Object.assign(window.app, {
-    // ... [Timer & State functions remain unchanged] ...
     startTimer: function () {
         if (this.data.timer) clearInterval(this.data.timer);
         if (!this.data.endTime) this.data.endTime = Date.now() + this.data.timeLeft * 1000;
@@ -195,9 +194,6 @@ Object.assign(window.app, {
                     </div>
                     <div class="p-6 flex-grow overflow-y-auto">
                         <div class="flex gap-2 mb-4 flex-wrap">${imageButtonHtml}${notesButtonHtml}${topicImagesButtonHtml}</div>
-                        
-                        <!-- 🌟 Question Image Display -->
-                        ${q.image ? `<div class="mb-6 flex justify-center"><img src="${q.image}" class="max-h-64 max-w-full rounded-lg border border-gray-300 shadow-md object-contain" alt="Question Diagram"></div>` : ''}
                         
                         <div class="text-xl text-gray-800 font-medium mb-8 leading-relaxed whitespace-pre-wrap break-words">${q.text}</div>
                         ${answerArea}
